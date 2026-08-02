@@ -1,0 +1,29 @@
+---
+description: TimeSense product design — visual timer, zero friction, non-judgmental insights
+alwaysApply: true
+---
+
+# Product Design Constraints
+
+Source of truth: `BUILD_SPEC.md` §3 and §7.
+
+## Visual timer
+
+- The shrinking pie/bar/ring is the product — large, full-screen when active, bespoke (reanimated + SVG), not a generic progress bar with a label.
+- No digital countdown by default; optional MM:SS toggle only.
+- Color shift as time runs low (e.g. green → yellow → red).
+
+## Zero friction (ADHD)
+
+- Task name and category are optional. "Just start a timer" must stay one tap from home.
+- Prefer big number pickers over tiny text fields for duration.
+- Guest / offline mode on first open — prompt to sign up later as "back up your data," not a gate.
+
+## Insights tone
+
+- Deterministic stats only (rolling `(actual - predicted) / predicted` per category) — no AI.
+- Frame as self-knowledge ("you tend to...") never criticism ("you're bad at...").
+
+## Timer accuracy
+
+- Always `elapsed = now - startTimestamp` (plus pause accounting). Never rely on a JS interval alone for correctness.

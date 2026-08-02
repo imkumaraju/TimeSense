@@ -1,0 +1,80 @@
+TimeSense — Google sign-in on Android (Expo Go)
+================================================
+
+Web Google login already uses a Google **Web** OAuth client + Supabase.
+Android Expo Go uses the same Web client, but must return into the app via a
+deep link (`exp://…` or `timesense://…`).
+
+---------------------------------------------------------------------------
+A. Supabase redirect URLs (required for Android)
+---------------------------------------------------------------------------
+Authentication → URL Configuration → Additional Redirect URLs — ensure ALL of:
+
+  timesense://auth/callback
+  timesense://**
+  exp://**
+  exp://127.0.0.1:8081/--/*
+  http://localhost:8081/**
+
+Save.
+
+---------------------------------------------------------------------------
+B. Google Cloud (you likely already did the Web client)
+---------------------------------------------------------------------------
+1. https://console.cloud.google.com/ → your project
+2. APIs & Services → Credentials
+3. You need a **Web application** OAuth client (not only Android):
+   - Authorized redirect URI:
+     https://pwgspnqodaokmkoyghcu.supabase.co/auth/v1/callback
+4. Supabase → Authentication → Providers → Google
+   - Client ID + Client Secret from that **Web** client
+   - Enabled → Save
+
+Optional later (native Google button / Play Store build — NOT required for Expo Go):
+5. Create an **Android** OAuth client:
+   - Package name: com.timesense.app
+   - SHA-1: debug keystore fingerprint (see section D)
+6. Add that Android client ID in Google Console; keep using the Web client
+   in Supabase for the browser OAuth flow.
+
+---------------------------------------------------------------------------
+C. Test on Android phone (Expo Go)
+---------------------------------------------------------------------------
+1. Phone + PC on same Wi‑Fi (avoid weak mobile data — Google’s pages are heavy)
+2. npx expo start -c
+3. Open app in Expo Go (SDK 54)
+4. Auth → note "OAuth redirect: …" (usually exp://IP:8081/--/auth/callback)
+5. Supabase → Authentication → URL Configuration → paste that EXACT string
+   into Additional Redirect URLs (plus exp://**). Save.
+6. Auth → Continue with Google → pick account → Allow / Continue
+7. Browser should close and return to Expo Go
+8. Success: Home shows "Signed in as …" and Supabase → Users shows google
+
+Stuck on Google "Choose an account"?
+- Use Wi‑Fi; wait after tapping (slow networks look frozen)
+- After picking an account, if you never return to the app → redirect URL
+  missing in Supabase (step 5). Close the browser tab and retry.
+- Google Cloud OAuth consent "Testing": your Gmail must be listed as a test user
+- Google Web client Authorized redirect URI must be exactly:
+  https://pwgspnqodaokmkoyghcu.supabase.co/auth/v1/callback
+
+---------------------------------------------------------------------------
+D. SHA-1 for future native / EAS Android builds (optional now)
+---------------------------------------------------------------------------
+Debug keystore (typical Windows path):
+
+  keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android
+
+Copy SHA-1 into Google Cloud → Android OAuth client.
+
+---------------------------------------------------------------------------
+E. How the Android flow works
+---------------------------------------------------------------------------
+App → Supabase signInWithOAuth(google)
+   → Chrome Custom Tab / browser
+   → Google consent
+   → Supabase /auth/v1/callback
+   → redirects to exp://… or timesense://auth/callback with tokens
+   → app setSession → signed in
+
+No native Google SDK is required for Expo Go.

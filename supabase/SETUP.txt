@@ -1,0 +1,24 @@
+/**
+ * Dashboard checklist (Step 2 — complete once in your Supabase project):
+ *
+ * 1. Create a project at https://supabase.com
+ * 2. Project Settings → API: copy Project URL + anon/publishable key into `.env`
+ * 3. SQL Editor → run in order:
+ *      - supabase/migrations/001_tasks.sql
+ *      - supabase/migrations/002_task_description.sql
+ *      - supabase/migrations/003_cost_strategy_schema.sql
+ *      - supabase/migrations/004_profile_names.sql  ← username / first_name / last_name
+ * 4. Authentication → Providers: Email, Google, Apple
+ *        Google scopes used by the app: openid email profile (email + name only)
+ *        Apple scopes: EMAIL + FULL_NAME (name only on first authorize)
+ * 5. Authentication → URL Configuration: timesense://auth/callback + exp://**
+ *
+ * Schema + cost strategy: BUILD_SPEC.md §4
+ * Default visual_style / default_visual_style: 'pizza'
+ * Full Google/Apple walkthrough: supabase/SOCIAL_AUTH_SETUP.txt
+ *
+ * Profiles / interruptions empty?
+ * 1. Re-run 003_cost_strategy_schema.sql (creates tables + backfills profiles for existing users)
+ * 2. Signed in → Profile → Sync now (pushes profile name/timezone + tasks)
+ * 3. Interruptions: Pause on active timer creates a row; Resume closes it; Sync now uploads
+ */

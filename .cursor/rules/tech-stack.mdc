@@ -1,0 +1,23 @@
+---
+description: TimeSense tech stack — Expo, Zustand, SQLite, Supabase; avoid alternate stacks
+alwaysApply: true
+---
+
+# Tech Stack
+
+Source of truth: `BUILD_SPEC.md` §2.
+
+| Concern | Use |
+|---------|-----|
+| App | React Native + Expo (managed) + Expo Router + TypeScript |
+| Timer UI | `react-native-reanimated` v3, `react-native-svg`, `react-native-gesture-handler` |
+| State | Zustand (or Context if still tiny) |
+| Local data | `expo-sqlite` for tasks/sessions; AsyncStorage only for simple settings |
+| Backend | Supabase Auth + Postgres + RLS (`auth.uid()`) |
+| Charts | `victory-native` or custom SVG |
+| Notify | `expo-notifications` |
+| Test | Jest + RNTL (timer math + estimator stats) |
+| Ship | EAS Build / Submit |
+
+Do not introduce Redux, heavy UI kits, Firebase (unless explicitly chosen over Supabase), or a custom auth server.
+Do not make the live timer wait on network I/O.

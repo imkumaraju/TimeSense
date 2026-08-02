@@ -1,0 +1,28 @@
+---
+description: Local-first sync and cost-conscious Supabase usage for TimeSense
+alwaysApply: true
+---
+
+# Local-First & Cost-Conscious Data
+
+Full schema and sync details: `BUILD_SPEC.md` §4.
+
+**Cost lever is egress/connections, not storage.** Optimize for fewer, smaller network round-trips.
+
+## Must follow
+
+1. **Local-first** — UI reads/writes `expo-sqlite` only. Supabase is backup/sync, never required to render the timer.
+2. **Delta sync only** — pull `WHERE updated_at > :watermark`. Never full-history fetch on routine sync.
+3. **No Realtime** — push-on-write + pull-on-foreground/login. No open Realtime channels.
+4. **Insights on-device** — compute from local SQLite only. No `insights` table, no Supabase insight queries.
+5. **Narrow tables** — no JSON blobs, large text, images, or Supabase Storage.
+
+## Sync pattern (`syncService`)
+
+- Write local first → `synced = 0` → upsert to Supabase if online → `synced = 1`; else queue and flush on reconnect/foreground.
+- Bump `updated_at` on every edit (drives delta pull).
+- Guest mode stays local-only until the user signs in.
+
+## Do not build
+
+- Realtime subscriptions, insights table, file uploads, materialized views, separate categories table (v1).

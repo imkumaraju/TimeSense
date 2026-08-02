@@ -1,0 +1,31 @@
+---
+description: Avoid redundant code — reuse existing utilities and dependencies before writing new code
+alwaysApply: true
+---
+
+# Avoid Redundant Code
+
+## Before writing any new code
+
+1. Check if the functionality already exists in this codebase (search for similar functions, utilities, or components) before writing something new. If something similar exists, reuse or extend it instead of duplicating it.
+
+2. Check if the functionality can be handled by an existing dependency already listed in package.json / requirements.txt / pyproject.toml / etc. Do not write custom code for things a package already installed can do.
+
+3. If no installed package handles it, but a well-maintained, widely-used third-party package exists for it (e.g. date handling, validation, HTTP requests, retries, UUIDs, hashing), prefer adding and using that package over writing custom implementation — unless:
+   - the dependency is unusually heavy for the need,
+   - it would introduce a conflicting version of something already used,
+   - the requirement is trivial (a couple of lines) and not worth a dependency.
+
+4. Only write new custom code when:
+   - no existing internal utility covers it, AND
+   - no reasonable package covers it, OR using a package is explicitly rejected by the above exceptions.
+
+## When proposing new code
+
+- State briefly which of the above you checked (existing code / existing dependency / candidate package) and why you're writing new code if you are.
+- Do not silently reimplement things like: deep clone, debounce/throttle, date formatting/parsing, UUID generation, schema validation, retry/backoff, argument parsing, env var loading — use the standard package for these.
+
+## General
+
+- Prefer editing/extending existing functions over creating near-duplicate ones.
+- If you notice existing redundant code while working nearby, flag it (don't silently refactor unrelated code without asking).
