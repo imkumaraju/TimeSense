@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeSense — Moon Arc Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crust:#D98A3D;
+    --crust-dark:#B5691F;
+    --sauce:#C1442D;
+    --cheese:#FFE29B;
+    --basil:#4B7A4C;
+    --board:#241A14;
+    --board-light:#332419;
+    --plate:#FBF5E9;
+    --cream:#FFF8EC;
+    --ink:#241A14;
+    --muted:#8A7561;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--board);
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(217,138,61,0.07), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(217,138,61,0.09), transparent 45%);
+    color:var(--cream);
+    font-family:'Inter',sans-serif;
+    padding:44px 32px 90px;
+  }
+  header{max-width:900px;margin:0 auto 40px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--crust);font-weight:500;margin-bottom:10px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:900;font-size:clamp(28px,4.4vw,44px);
+    line-height:1.06;margin:0 0 14px;color:var(--cream);
+  }
+  header p{font-size:15px;line-height:1.6;color:#CBB79E;max-width:600px;margin:0;}
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;
+    text-transform:uppercase;color:var(--crust);margin:44px auto 18px;max-width:900px;
+  }
+
+  .stage-scroll{overflow-x:auto;padding:6px 4px 20px;}
+  .stage-row{display:flex;gap:16px;min-width:max-content;}
+  .stage{
+    width:140px;background:var(--board-light);border-radius:16px;padding:10px 10px 12px;
+    border:1px solid rgba(217,138,61,0.15);text-align:center;
+  }
+  .stage svg{display:block;margin:0 auto;border-radius:10px;}
+  .stage-name{font-family:'Fraunces',serif;font-weight:600;font-size:12.5px;color:var(--cheese);margin-top:8px;}
+  .stage-pct{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:2px;}
+
+  .demo-wrap{max-width:900px;margin:0 auto;}
+  .panel{
+    background:var(--board-light);border:1px solid rgba(217,138,61,0.18);
+    border-radius:20px;padding:28px 24px 24px;display:flex;gap:32px;flex-wrap:wrap;
+  }
+  .panel .info{flex:1;min-width:220px;}
+  .panel h2{font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin:0 0 8px;color:var(--cream);}
+  .panel .desc{font-size:13.5px;color:#C7B39B;line-height:1.6;margin:0 0 18px;}
+  .panel ul{margin:0;padding-left:18px;font-size:12.5px;color:#C7B39B;line-height:1.9;}
+  .panel ul b{color:var(--cheese);}
+
+  .stage-demo{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+  .plate-shadow{filter:drop-shadow(0 14px 18px rgba(0,0,0,0.5));border-radius:12px;}
+  .controls{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;}
+  button{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
+    background:var(--crust);color:var(--board);border:none;
+    padding:9px 18px;border-radius:999px;cursor:pointer;
+    transition:transform .12s ease, background .12s ease;
+  }
+  button:hover{background:var(--cheese);}
+  button:active{transform:scale(0.96);}
+  button.secondary{background:transparent;color:var(--crust);border:1px solid var(--crust);}
+  button.secondary:hover{background:rgba(217,138,61,0.14);}
+  .readout{
+    text-align:center;font-family:'Fraunces',serif;font-weight:600;
+    font-size:15px;color:var(--cheese);margin-top:14px;
+  }
+  .readout small{display:block;font-family:'Inter',sans-serif;font-weight:400;
+    font-size:11.5px;color:#B99A7C;margin-top:2px;letter-spacing:0.03em;text-transform:uppercase;}
+
+  .phone-row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-top:26px;}
+  .phone{
+    width:236px;height:500px;background:var(--board-light);border-radius:34px;padding:10px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(217,138,61,0.15);
+  }
+  .screen{
+    width:100%;height:100%;border-radius:26px;overflow:hidden;position:relative;
+    display:flex;flex-direction:column;color:var(--ink);background:var(--plate);
+  }
+  .screen.dark{background:var(--board);color:var(--cream);}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 2px;font-size:10px;font-weight:600;}
+  .statusbar .icons{display:flex;gap:3px;align-items:center;}
+  .statusbar .icons div{width:9px;height:6px;background:currentColor;border-radius:1px;}
+  .screen-content{flex:1;padding:12px 16px 14px;display:flex;flex-direction:column;overflow:hidden;}
+  .app-header{font-family:'Fraunces',serif;font-weight:700;font-size:14px;margin:2px 0 3px;}
+  .app-sub{font-size:10px;color:var(--muted);margin-bottom:8px;}
+  .field{background:var(--cream);border:1px solid #E7D9C3;border-radius:10px;padding:9px 10px;font-size:10.5px;color:var(--muted);margin-bottom:9px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .chip{font-size:9.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--cream);border:1px solid #E7D9C3;color:var(--muted);}
+  .chip.active{background:var(--crust);border-color:var(--crust);color:var(--board);}
+  .btn{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;padding:9px 14px;border-radius:999px;border:none;text-align:center;}
+  .btn-primary{background:var(--sauce);color:var(--cream);}
+  .btn-block{width:100%;display:block;}
+  .btn-secondary-dark{background:transparent;border:1px solid var(--crust);color:var(--cheese);}
+  .btn-ghost-dark{background:transparent;color:#B99A7C;font-weight:500;text-decoration:underline;font-size:10px;}
+  .step-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--crust);
+    letter-spacing:0.08em;margin-bottom:10px;text-align:center;
+  }
+
+  footer{max-width:900px;margin:56px auto 0;font-size:13px;color:#9B8067;line-height:1.7;
+    border-top:1px solid rgba(217,138,61,0.18);padding-top:26px;}
+  footer strong{color:var(--cheese);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">TimeSense — timer style, Concept D</div>
+  <h1>The moon crosses<br>the sky, once.</h1>
+  <p>An ambient, low-motion timer style: the moon rises at one horizon when the task starts,
+  arcs overhead, and sets at the opposite horizon exactly when time's up. No shrinking shapes,
+  no countdown pressure — just a single slow arc, which makes it a strong candidate for the
+  reduced-motion accessibility mode. Same warm palette as the rest of the app, used as the
+  moon's glow and the dawn/dusk horizon light rather than as flat page color.</p>
+</header>
+
+<div class="section-label">Position across the timer duration</div>
+<div class="stage-scroll">
+  <div class="stage-row" id="stageRow"></div>
+</div>
+
+<div class="section-label">Live demo — active timer with Moon style</div>
+<div class="demo-wrap">
+  <div class="panel">
+    <div class="info">
+      <h2>Moon Arc Timer</h2>
+      <p class="desc">Same <code>t = elapsed / total</code> value as the other styles — here
+      it maps directly to an angle along a semicircular arc from horizon to horizon.</p>
+      <ul>
+        <li><b>0%</b> — moonrise, warm horizon glow, task just started</li>
+        <li><b>~50%</b> — zenith, deepest night, stars fully out — the "middle of the task" moment</li>
+        <li><b>85–100%</b> — moonset, horizon glow returns on the opposite side, signaling time's almost up</li>
+      </ul>
+    </div>
+    <div class="stage-demo">
+      <svg id="livePlant" width="220" height="150" viewBox="0 0 220 150" class="plate-shadow"></svg>
+      <div class="readout" id="liveReadout">18:00 <small>remaining · 25:00 task</small></div>
+      <div class="controls">
+        <button id="moonToggle">Pause</button>
+        <button class="secondary" id="moonReset">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">Where it appears — New Timer setup + Active Timer</div>
+<div class="phone-row">
+
+  <div>
+    <div class="step-label">NEW TIMER SETUP</div>
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+      <div class="screen-content">
+        <div class="app-header">New timer</div>
+        <div class="field">What are you doing? (optional)</div>
+        <div class="app-sub" style="margin:2px 0 6px;">PREDICTED DURATION</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px;">
+          <div style="font-family:'Fraunces',serif;font-weight:700;font-size:24px;">25<span style="font-size:11px;font-weight:500;color:var(--muted);"> min</span></div>
+        </div>
+        <div class="app-sub" style="margin-bottom:6px;">TIMER STYLE</div>
+        <div class="chip-row">
+          <div class="chip">Radial</div><div class="chip">Slices</div><div class="chip">Plant</div><div class="chip active">Moon 🌙</div>
+        </div>
+        <div class="app-sub" style="margin-bottom:6px;">CATEGORY</div>
+        <div class="chip-row">
+          <div class="chip active">Work</div><div class="chip">Study</div><div class="chip">Chores</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div class="btn btn-primary btn-block">Start Timer</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div>
+    <div class="step-label">ACTIVE TIMER</div>
+    <div class="phone"><div class="screen dark">
+      <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+      <div class="screen-content" style="align-items:center;justify-content:center;">
+        <svg id="phonePlant" width="196" height="130" viewBox="0 0 220 150" style="margin-bottom:10px;border-radius:12px;"></svg>
+        <div style="font-family:'Fraunces',serif;font-weight:600;font-size:15px;margin-bottom:2px;">12:41</div>
+        <div style="font-size:9px;color:#B99A7C;margin-bottom:14px;">remaining · Deep work</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <div class="btn btn-secondary-dark">Pause</div>
+          <div class="btn btn-secondary-dark">+5 min</div>
+        </div>
+        <div class="btn-ghost-dark" style="margin-bottom:10px;">Got distracted</div>
+        <div class="btn btn-primary btn-block">Finish</div>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<footer>
+  <strong>Consistency check:</strong> the sky base is the same <code>--board</code> dark used
+  on the Active Timer screen for every other style, so this doesn't need a special dark-mode
+  exception. The only new color use is <code>--cream</code> for stars/moonlight and the
+  existing <code>--crust</code>/<code>--sauce</code> pairing for the horizon glow at moonrise
+  and moonset — no new hues introduced, just applied to a night sky instead of a pizza or a
+  flower.
+</footer>
+
+<script>
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function lerp(a,b,t){ return a + (b-a)*t; }
+function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+const COLORS = {
+  board:'#241A14', boardLight:'#332419', cream:'#FFF8EC',
+  crust:'#D98A3D', crustDark:'#B5691F', sauce:'#C1442D', cheese:'#FFE29B'
+};
+
+// deterministic star field
+const STARS = [];
+(function(){
+  let seed = 42;
+  function rnd(){ seed = (seed*9301+49297)%233280; return seed/233280; }
+  for(let i=0;i<40;i++){
+    STARS.push({x: rnd()*220, y: rnd()*95, r: 0.6+rnd()*1.1, tw: rnd()});
+  }
+})();
+
+/* Draws the moon scene at progress t (0..1) into an existing <g>, clearing first.
+   Viewbox assumed 0 0 220 150, horizon at y=118 */
+function drawMoonScene(g, t){
+  while(g.firstChild) g.removeChild(g.firstChild);
+
+  const W=220,H=150, horizonY=118;
+  const cx=110, cy=horizonY, r=88;
+
+  // sky base
+  g.appendChild(el('rect',{x:0,y:0,width:W,height:H,fill:COLORS.board}));
+
+  // horizon glow strength peaks at t=0 and t=1, minimal at t=0.5 (zenith/deep night)
+  const glow = Math.pow(Math.abs(t-0.5)*2, 1.6); // 0 at zenith, 1 at horizons
+  const grad = el('linearGradient',{id:'horizonGlow',x1:'0',y1:'1',x2:'0',y2:'0'});
+  grad.appendChild(el('stop',{offset:'0%',['stop-color']:COLORS.sauce,['stop-opacity']:0.55*glow}));
+  grad.appendChild(el('stop',{offset:'55%',['stop-color']:COLORS.crust,['stop-opacity']:0.22*glow}));
+  grad.appendChild(el('stop',{offset:'100%',['stop-color']:COLORS.board,['stop-opacity']:0}));
+  const defs = el('defs',{}); defs.appendChild(grad); g.appendChild(defs);
+  g.appendChild(el('rect',{x:0,y:0,width:W,height:H,fill:'url(#horizonGlow)'}));
+
+  // stars — dimmer near horizon glow, twinkle via opacity based on t
+  STARS.forEach(s=>{
+    const nearHorizonFade = 1 - glow*0.7;
+    const twinkle = 0.5 + 0.5*Math.sin((t*30)+s.tw*20);
+    g.appendChild(el('circle',{cx:s.x, cy:s.y, r:s.r, fill:COLORS.cream, opacity:(0.35+0.5*twinkle)*nearHorizonFade}));
+  });
+
+  // horizon line + ground silhouette
+  g.appendChild(el('rect',{x:0,y:horizonY,width:W,height:H-horizonY,fill:COLORS.boardLight}));
+  g.appendChild(el('line',{x1:0,y1:horizonY,x2:W,y2:horizonY,stroke:COLORS.crustDark,['stroke-width']:1,opacity:0.5}));
+
+  // arc path (dim, full journey)
+  const arcPath = `M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`;
+  g.appendChild(el('path',{d:arcPath, fill:'none', stroke:COLORS.cream, ['stroke-width']:1, ['stroke-dasharray']:'2 5', opacity:0.18}));
+
+  // traveled portion of the arc, brighter
+  const angle = lerp(180, 0, t); // degrees, 180=left horizon, 0=right horizon
+  const rad = angle*Math.PI/180;
+  const mx = cx + r*Math.cos(rad);
+  const my = cy - r*Math.sin(rad);
+  const startRad = Math.PI; // 180deg
+  const sx = cx + r*Math.cos(startRad);
+  const sy = cy - r*Math.sin(startRad);
+  if(t > 0.01){
+    const largeArc = 0;
+    const traveledPath = `M ${sx} ${sy} A ${r} ${r} 0 ${largeArc} 1 ${mx} ${my}`;
+    g.appendChild(el('path',{d:traveledPath, fill:'none', stroke:COLORS.cheese, ['stroke-width']:1.2, opacity:0.4}));
+  }
+
+  // moon glow halo
+  g.appendChild(el('circle',{cx:mx, cy:my, r:15, fill:COLORS.crust, opacity:0.18}));
+  g.appendChild(el('circle',{cx:mx, cy:my, r:9.5, fill:COLORS.cream}));
+  // crescent shading — a darker circle offset to carve a crescent
+  const crescentOffset = 4.5;
+  g.appendChild(el('circle',{cx:mx+crescentOffset, cy:my-2, r:8.6, fill:COLORS.board}));
+  // soft craters
+  g.appendChild(el('circle',{cx:mx-3.5, cy:my-2, r:1.1, fill:COLORS.cheese, opacity:0.5}));
+  g.appendChild(el('circle',{cx:mx-1, cy:my+2.5, r:0.8, fill:COLORS.cheese, opacity:0.4}));
+}
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+/* ---- Static stage board ---- */
+const STAGES = [
+  {name:'Moonrise', pct:0},
+  {name:'Climbing', pct:0.15},
+  {name:'Approaching zenith', pct:0.35},
+  {name:'Zenith', pct:0.5},
+  {name:'Descending', pct:0.65},
+  {name:'Nearing horizon', pct:0.85},
+  {name:'Moonset', pct:1.0},
+];
+const stageRow = document.getElementById('stageRow');
+STAGES.forEach(s=>{
+  const wrap = document.createElement('div');
+  wrap.className = 'stage';
+  const svg = el('svg',{width:120,height:82,viewBox:'0 0 220 150'});
+  const g = el('g',{});
+  svg.appendChild(g);
+  drawMoonScene(g, s.pct);
+  wrap.appendChild(svg);
+  const name = document.createElement('div'); name.className='stage-name'; name.textContent=s.name;
+  const pct = document.createElement('div'); pct.className='stage-pct'; pct.textContent=Math.round(s.pct*100)+'% elapsed';
+  wrap.appendChild(name); wrap.appendChild(pct);
+  stageRow.appendChild(wrap);
+});
+
+/* ---- Live animated demo ---- */
+(function(){
+  const svg = document.getElementById('livePlant');
+  const phoneSvg = document.getElementById('phonePlant');
+  const g1 = el('g',{}); svg.appendChild(g1);
+  const g2 = el('g',{}); phoneSvg.appendChild(g2);
+
+  const TOTAL = 25*60;
+  let remaining = TOTAL;
+  let running = true;
+  const readout = document.getElementById('liveReadout');
+  const small = readout.querySelector('small');
+
+  function render(){
+    const t = 1 - clamp01(remaining/TOTAL);
+    drawMoonScene(g1, t);
+    drawMoonScene(g2, t);
+    readout.firstChild.textContent = fmtTime(remaining) + ' ';
+    small.textContent = `remaining · ${fmtTime(TOTAL)} task`;
+  }
+  render();
+
+  let last = performance.now();
+  function tick(now){
+    const dt = (now-last)/1000; last = now;
+    if(running){
+      remaining -= dt * 14;
+      if(remaining <= 0){ remaining = TOTAL; }
+      render();
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  document.getElementById('moonToggle').addEventListener('click', (e)=>{
+    running = !running;
+    e.target.textContent = running ? 'Pause' : 'Resume';
+  });
+  document.getElementById('moonReset').addEventListener('click', ()=>{
+    remaining = TOTAL; render();
+  });
+})();
+</script>
+
+</body>
+</html>
