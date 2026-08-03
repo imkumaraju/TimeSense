@@ -3,14 +3,31 @@ TimeSense — Google & Apple sign-in setup
 
 App code is ready. You must enable providers in Google / Apple / Supabase.
 
-Your Supabase project URL:
+For multi-env (dev / sys / prod) bundle IDs, Google Web clients × 3, and
+per-project Supabase URL config, follow the OAuth checklist in:
+  docs/DEPLOYMENT.md
+
+Bundle / package IDs (confirmed):
+  com.timesense.dev   → EAS development / timesense-dev
+  com.timesense.sys   → EAS preview      / timesense-sys
+  com.timesense       → EAS production   / timesense-prod
+
+Old single ID (do not use for new Apple/Google/store apps):
+  com.timesense.app
+
+Current (dev) Supabase project URL:
   https://pwgspnqodaokmkoyghcu.supabase.co
 
-Callback Supabase always uses (add this to Google & Apple):
+Callback Supabase always uses (add this to Google & Apple for THIS project):
   https://pwgspnqodaokmkoyghcu.supabase.co/auth/v1/callback
 
+Deep link back into the app (lib/oauth.ts):
+  Standalone / dev build → timesense://auth/callback  (scheme may become
+  timesense-dev / timesense-sys / timesense per env when app.config.js lands)
+  Expo Go → exp://…/--/auth/callback
+
 ---------------------------------------------------------------------------
-A. Supabase redirect URLs (do this first)
+A. Supabase redirect URLs (do this first — per project)
 ---------------------------------------------------------------------------
 1. Dashboard → Authentication → URL Configuration
 2. Site URL: timesense://auth/callback
@@ -18,20 +35,31 @@ A. Supabase redirect URLs (do this first)
    - timesense://auth/callback
    - timesense://**
    - exp://**                    (Expo Go on device)
+   - exp://127.0.0.1:8081/--/*
    - http://localhost:8081/**    (web testing)
+
+When env-specific schemes are wired, also add that env’s scheme
+(e.g. timesense-dev://auth/callback) — see docs/DEPLOYMENT.md.
 
 ---------------------------------------------------------------------------
 B. Google (required for "Continue with Google")
 ---------------------------------------------------------------------------
+Supabase needs a Google **Web application** OAuth client (not Android/iOS).
+Recommend: one Google Cloud project, one Web client per Supabase env.
+
 1. Open https://console.cloud.google.com/ → create/select a project
 2. APIs & Services → OAuth consent screen → configure (External is fine for testing)
 3. APIs & Services → Credentials → Create credentials → OAuth client ID
    → Application type: Web application
-   → Authorized redirect URIs:
+   → Authorized redirect URIs (THIS env only):
        https://pwgspnqodaokmkoyghcu.supabase.co/auth/v1/callback
+     (sys/prod: use that project’s https://<ref>.supabase.co/auth/v1/callback)
 4. Copy Client ID and Client Secret
 5. Supabase → Authentication → Providers → Google → Enable
    → paste Client ID + Client Secret → Save
+
+Android/iOS Google clients are optional for the current browser OAuth flow.
+See supabase/ANDROID_GOOGLE_AUTH.txt for Expo Go + optional SHA-1 notes.
 
 ---------------------------------------------------------------------------
 C. Apple — native iOS (Expo Go / iPhone)
@@ -41,7 +69,10 @@ Apple Sign-In on iOS uses identity tokens (no browser).
 1. Supabase → Authentication → Providers → Apple → Enable
 2. Client IDs (comma-separated), include at least:
    - host.exp.Exponent          ← required for Expo Go testing
-   - com.timesense.app          ← your app bundle id (dev builds / store)
+   - com.timesense.dev
+   - com.timesense.sys
+   - com.timesense
+   (Remove com.timesense.app once you no longer ship that ID.)
 3. For Expo Go testing you can leave Secret Key empty if you ONLY use
    native Sign in with Apple on iOS (signInWithIdToken).
 4. On a real iPhone with Expo Go: Auth screen → Continue with Apple
@@ -50,6 +81,7 @@ Notes:
 - Apple button only appears on iOS devices that support it (not Android emulator).
 - App Store rule: if you offer Google (or any other social login), you MUST
   also offer Apple Sign-In on iOS — we already do.
+- Register the three App IDs in Apple Developer (not com.timesense.app).
 
 ---------------------------------------------------------------------------
 D. Apple — Android / web browser OAuth (optional, more setup)
@@ -60,10 +92,11 @@ Requires an Apple Developer paid account:
 1. Certificates, Identifiers & Profiles → Identifiers → Services ID
 2. Enable Sign in with Apple → configure Return URL:
    https://pwgspnqodaokmkoyghcu.supabase.co/auth/v1/callback
+   (add sys/prod callbacks when those projects exist)
 3. Create a Sign in with Apple key (.p8), note Key ID + Team ID
 4. Supabase Apple provider:
    - Services ID first in Client IDs list (for web OAuth)
-   - then host.exp.Exponent and com.timesense.app
+   - then host.exp.Exponent and the three com.timesense.* bundle IDs
    - Secret Key generated from .p8 / Team ID / Key ID (Supabase docs have a generator)
 
 ---------------------------------------------------------------------------

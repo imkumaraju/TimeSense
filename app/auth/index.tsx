@@ -32,38 +32,19 @@ export default function AuthScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [busy, setBusy] = useState(false);
-  const [oauthBusy, setOauthBusy] = useState<'google' | 'apple' | null>(null);
+  const [oauthBusy, setOauthBusy] = useState<'google' | null>(null);
   const [magicSent, setMagicSent] = useState(false);
-  const [appleAvailable, setAppleAvailable] = useState(Platform.OS !== 'ios');
 
   const error = useAuthStore((s) => s.error);
   const signInWithEmail = useAuthStore((s) => s.signInWithEmail);
   const signUpWithEmail = useAuthStore((s) => s.signUpWithEmail);
   const signInWithMagicLink = useAuthStore((s) => s.signInWithMagicLink);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
-  const signInWithApple = useAuthStore((s) => s.signInWithApple);
   const handleAuthUrl = useAuthStore((s) => s.handleAuthUrl);
   const continueAsGuest = useAuthStore((s) => s.continueAsGuest);
   const clearError = useAuthStore((s) => s.clearError);
 
   const goHome = () => router.replace('/');
-
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const AppleAuthentication = await import('expo-apple-authentication');
-        const available = await AppleAuthentication.isAvailableAsync();
-        if (!cancelled) setAppleAvailable(available);
-      } catch {
-        if (!cancelled) setAppleAvailable(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     const onUrl = async (url: string | null) => {
@@ -114,17 +95,6 @@ export default function AuthScreen() {
     setOauthBusy('google');
     try {
       const ok = await signInWithGoogle();
-      if (ok) goHome();
-    } finally {
-      setOauthBusy(null);
-    }
-  };
-
-  const onApple = async () => {
-    clearError();
-    setOauthBusy('apple');
-    try {
-      const ok = await signInWithApple();
       if (ok) goHome();
     } finally {
       setOauthBusy(null);
@@ -251,16 +221,7 @@ export default function AuthScreen() {
         />
         {busy ? <ActivityIndicator color={colors.sauce} style={{ marginBottom: 8 }} /> : null}
 
-        {appleAvailable ? (
-          <TsButton
-            label="Continue with Apple"
-            variant="secondary"
-            block
-            disabled={Boolean(oauthBusy) || !isSupabaseConfigured}
-            onPress={() => void onApple()}
-            style={{ marginBottom: 10 }}
-          />
-        ) : null}
+        {/* Sign in with Apple hidden until setup complete — see docs/BACKLOG.md */}
 
         <TsButton
           label={oauthBusy === 'google' ? 'Opening Google…' : 'Continue with Google'}

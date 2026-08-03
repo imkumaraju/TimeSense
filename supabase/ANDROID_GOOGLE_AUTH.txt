@@ -31,9 +31,10 @@ B. Google Cloud (you likely already did the Web client)
    - Enabled → Save
 
 Optional later (native Google button / Play Store build — NOT required for Expo Go):
-5. Create an **Android** OAuth client:
-   - Package name: com.timesense.app
-   - SHA-1: debug keystore fingerprint (see section D)
+5. Create an **Android** OAuth client per env package (see docs/DEPLOYMENT.md):
+   - com.timesense.dev / com.timesense.sys / com.timesense
+   - SHA-1: debug or EAS/Play signing fingerprint (see section D)
+   - Do not use the old placeholder com.timesense.app for new clients
 6. Add that Android client ID in Google Console; keep using the Web client
    in Supabase for the browser OAuth flow.
 

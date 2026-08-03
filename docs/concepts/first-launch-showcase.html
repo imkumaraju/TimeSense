@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeSense — First Launch Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crust:#D98A3D;
+    --crust-dark:#B5691F;
+    --sauce:#C1442D;
+    --cheese:#FFE29B;
+    --basil:#4B7A4C;
+    --board:#241A14;
+    --board-light:#332419;
+    --plate:#FBF5E9;
+    --cream:#FFF8EC;
+    --muted:#8A7561;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--board);
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(217,138,61,0.07), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(193,68,45,0.09), transparent 45%);
+    color:var(--cream);
+    font-family:'Inter',sans-serif;
+    padding:44px 32px 90px;
+  }
+  header{max-width:920px;margin:0 auto 40px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--crust);font-weight:500;margin-bottom:10px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:900;font-size:clamp(28px,4.4vw,44px);
+    line-height:1.06;margin:0 0 14px;color:var(--cream);
+  }
+  header p{font-size:15px;line-height:1.6;color:#CBB79E;max-width:640px;margin:0;}
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;
+    text-transform:uppercase;color:var(--crust);margin:44px auto 18px;max-width:920px;
+  }
+
+  /* ---- Live demo phone ---- */
+  .demo-wrap{max-width:920px;margin:0 auto;display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start;}
+  .phone{
+    width:260px;height:540px;background:var(--board-light);border-radius:36px;padding:10px;
+    box-shadow:0 22px 44px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(217,138,61,0.15);
+    flex-shrink:0;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:28px;overflow:hidden;position:relative;
+    background:var(--board);display:flex;flex-direction:column;
+  }
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:10px 18px 2px;font-size:10px;font-weight:600;color:var(--cream);position:relative;z-index:3;}
+  .statusbar .icons{display:flex;gap:3px;align-items:center;}
+  .statusbar .icons div{width:9px;height:6px;background:var(--cream);border-radius:1px;}
+
+  .wordmark{
+    text-align:center;padding:18px 0 4px;position:relative;z-index:3;
+  }
+  .wordmark .name{font-family:'Fraunces',serif;font-weight:700;font-size:20px;color:var(--cream);}
+  .wordmark .tag{font-size:10px;color:#B99A7C;margin-top:2px;}
+
+  .belt-viewport{
+    flex:1;position:relative;overflow:hidden;
+    -webkit-mask-image:linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
+    mask-image:linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
+  }
+  .belt-track{
+    position:absolute; top:50%; left:0; display:flex; align-items:center; gap:20px;
+    transform:translateY(-50%);
+    will-change:transform;
+  }
+  .belt-icon{
+    width:64px;height:64px;border-radius:16px;flex-shrink:0;
+    box-shadow:0 8px 16px rgba(0,0,0,0.4);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .rail{
+    position:absolute; left:0; right:0; top:50%; height:2px;
+    background:linear-gradient(90deg, transparent, rgba(217,138,61,0.35), transparent);
+  }
+
+  .skip-row{
+    display:flex;justify-content:flex-end;padding:10px 16px 4px;position:relative;z-index:3;
+  }
+  .skip-btn{
+    font-size:10.5px;color:#B99A7C;font-weight:600;text-decoration:underline;
+  }
+  .footer-copy{
+    text-align:center;padding:0 24px 22px;position:relative;z-index:3;
+  }
+  .footer-copy .h{font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--cream);margin-bottom:4px;}
+  .footer-copy .s{font-size:11px;color:#B99A7C;line-height:1.5;}
+  .dots{display:flex;justify-content:center;gap:5px;margin-top:14px;}
+  .dot{width:5px;height:5px;border-radius:50%;background:rgba(255,246,230,0.25);}
+  .dot.active{background:var(--crust);width:14px;border-radius:3px;}
+
+  .controls{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px;}
+  button{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
+    background:var(--crust);color:var(--board);border:none;
+    padding:9px 18px;border-radius:999px;cursor:pointer;
+  }
+  button.secondary{background:transparent;color:var(--crust);border:1px solid var(--crust);}
+
+  .info{max-width:400px;}
+  .info h2{font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin:0 0 10px;color:var(--cream);}
+  .info p{font-size:13.5px;color:#C7B39B;line-height:1.65;margin:0 0 14px;}
+  .info ul{margin:0 0 14px;padding-left:18px;font-size:12.5px;color:#C7B39B;line-height:1.9;}
+  .info ul b{color:var(--cheese);}
+  .spec-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
+  .spec-table td{padding:6px 0;border-bottom:1px solid rgba(217,138,61,0.15);vertical-align:top;}
+  .spec-table td:first-child{color:var(--crust);font-family:'JetBrains Mono',monospace;font-size:10.5px;width:120px;padding-right:10px;}
+  .spec-table td:last-child{color:#C7B39B;}
+
+  /* ---- Storyboard frames ---- */
+  .story-scroll{overflow-x:auto;padding:6px 4px 20px;}
+  .story-row{display:flex;gap:14px;min-width:max-content;}
+  .story{
+    width:150px;background:var(--board-light);border-radius:16px;padding:10px;
+    border:1px solid rgba(217,138,61,0.15);
+  }
+  .story-frame{
+    width:130px;height:80px;border-radius:10px;overflow:hidden;position:relative;background:var(--board);
+  }
+  .story-label{font-family:'Fraunces',serif;font-weight:600;font-size:11.5px;color:var(--cheese);margin-top:8px;}
+  .story-note{font-size:9.5px;color:var(--muted);margin-top:2px;line-height:1.4;}
+
+  footer{max-width:920px;margin:52px auto 0;font-size:13px;color:#9B8067;line-height:1.75;
+    border-top:1px solid rgba(217,138,61,0.18);padding-top:26px;}
+  footer strong{color:var(--cheese);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">TimeSense — daily open experience</div>
+  <h1>Every style,<br>rolling past once.</h1>
+  <p>Shown on the <b>first open of each local calendar day</b>. All the timer-style icons move
+  past horizontally like a conveyor belt — one full pass through the set, then it auto-advances
+  to Home. The point is to say "this app has range" in five seconds, without a single word
+  of copy doing the explaining. The belt closes on <b>Cat Loaf</b> — the app icon.</p>
+</header>
+
+<div class="section-label">Live demo — the belt in motion</div>
+<div class="demo-wrap">
+  <div class="phone">
+    <div class="screen">
+      <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+      <div class="wordmark">
+        <div class="name">TimeSense</div>
+        <div class="tag">a timer for however you focus</div>
+      </div>
+      <div class="skip-row"><div class="skip-btn">Skip</div></div>
+      <div class="belt-viewport" id="beltViewport">
+        <div class="rail"></div>
+        <div class="belt-track" id="beltTrack"></div>
+      </div>
+      <div class="footer-copy">
+        <div class="h" id="captionH">Radial</div>
+        <div class="s" id="captionS">The classic shrinking pie, made from a pizza</div>
+        <div class="dots" id="dotsRow"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info">
+    <h2>How the belt behaves</h2>
+    <p>One continuous horizontal scroll, right to left, at a constant speed — no easing per
+    icon, no pause-and-snap. It should feel like a single smooth pass, not a slideshow.</p>
+    <ul>
+      <li><b>One loop only.</b> The belt travels the width of all 8 icons exactly once, then
+      stops and auto-advances to Sign Up — it does not loop indefinitely. A new user shouldn't
+      feel like they're waiting for something to end.</li>
+      <li><b>Caption follows the centered icon.</b> Whichever icon is nearest the horizontal
+      center updates the name + one-line description beneath — this is the only text on
+      screen, so it should always match what's actually centered.</li>
+      <li><b>Skip is always available</b>, top-right, from the very first frame — this screen
+      should never feel like it's blocking someone who already knows they want the app.</li>
+      <li><b>Total duration:</b> ~4–5 seconds for the full pass — fast enough to not feel like
+      a delay, slow enough that each icon is legible for a beat as it crosses center.</li>
+    </ul>
+    <table class="spec-table">
+      <tr><td>Trigger</td><td>First open each local calendar day — AsyncStorage
+        <code>timesense.showcase.last_shown_date</code> (YYYY-MM-DD). Same day reopen skips it.</td></tr>
+      <tr><td>Auto-advance</td><td>Fires when the belt finishes its single pass — goes to
+        <b>Home</b> (not Sign Up every day). Skip is always available top-right.</td></tr>
+      <tr><td>Order</td><td>Radial → Slices → Plant → Moon → Sky → Garden → Monk → Cat Loaf —
+        ending on the app icon (Cat Loaf): cream loaf, crust-dark ear inners, basil eyes on
+        <code>--crust</code>.</td></tr>
+      <tr><td>Reduced motion</td><td>If the OS reduced-motion setting is on, replace the moving
+        belt with a static row of all 8 icons (no scroll animation) plus the same captions
+        shown as a simple stacked list.</td></tr>
+    </table>
+    <div class="controls">
+      <button id="beltToggle">Replay</button>
+      <button class="secondary" id="beltSkip">Skip →</button>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">Storyboard — key moments in the pass</div>
+<div class="story-scroll">
+  <div class="story-row" id="storyRow"></div>
+</div>
+
+<footer>
+  <strong>Why Cat Loaf closes the sequence:</strong> it is the app's chosen icon
+  (Section 8). Ending the daily belt on it creates a small recognition beat — same cream loaf,
+  crust-dark ear shading, and basil eyes on a crust background as the home-screen mark.
+  Shown once per local calendar day, then Home.
+</footer>
+
+<script>
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+const C = {
+  crust:'#D98A3D', crustDark:'#B5691F', sauce:'#C1442D', cheese:'#FFE29B',
+  basil:'#4B7A4C', board:'#241A14', boardLight:'#332419', plate:'#FBF5E9', cream:'#FFF8EC'
+};
+function bg(svg, fill, id){
+  if(Array.isArray(fill)){
+    const grad = el('linearGradient',{id, x1:'0',y1:'0',x2:'1',y2:'1'});
+    grad.appendChild(el('stop',{offset:'0%',['stop-color']:fill[0]}));
+    grad.appendChild(el('stop',{offset:'100%',['stop-color']:fill[1]}));
+    const defs = el('defs',{}); defs.appendChild(grad); svg.appendChild(defs);
+    svg.appendChild(el('rect',{x:0,y:0,width:100,height:100,fill:`url(#${id})`}));
+  } else {
+    svg.appendChild(el('rect',{x:0,y:0,width:100,height:100,fill}));
+  }
+}
+
+const STYLES = [
+  { name:'Radial', desc:'The classic shrinking pie, made from a pizza',
+    draw(svg){
+      bg(svg, C.sauce);
+      svg.appendChild(el('path',{d:'M50 20 L78 78 L22 78 Z', fill:C.crust}));
+      svg.appendChild(el('path',{d:'M50 30 L70 74 L30 74 Z', fill:C.cheese}));
+      svg.appendChild(el('circle',{cx:44,cy:52,r:5,fill:C.sauce}));
+      svg.appendChild(el('circle',{cx:58,cy:60,r:4.5,fill:C.sauce}));
+    }},
+  { name:'Slices', desc:'Time cut into pieces, one eaten at a time',
+    draw(svg, id){
+      bg(svg, [C.crust, C.crustDark], 'sl'+id);
+      for(let i=0;i<8;i++){
+        const a0=i*45, a1=(i+1)*45;
+        const r=36, cx=50, cy=50;
+        const p0={x:cx+r*Math.cos((a0-90)*Math.PI/180), y:cy+r*Math.sin((a0-90)*Math.PI/180)};
+        const p1={x:cx+r*Math.cos((a1-90)*Math.PI/180), y:cy+r*Math.sin((a1-90)*Math.PI/180)};
+        svg.appendChild(el('path',{d:`M ${cx} ${cy} L ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p1.x} ${p1.y} Z`, fill: i%2? C.cheese: C.crust, stroke:C.board, ['stroke-width']:1.5}));
+      }
+    }},
+  { name:'Plant', desc:'Grows and blooms as the task runs',
+    draw(svg){
+      bg(svg, C.basil);
+      svg.appendChild(el('path',{d:'M50 74 C50 50 38 44 50 30', fill:'none', stroke:C.cheese, ['stroke-width']:6, ['stroke-linecap']:'round'}));
+      svg.appendChild(el('path',{d:'M50 52 C58 46 66 50 64 40', fill:'none', stroke:C.cheese, ['stroke-width']:6, ['stroke-linecap']:'round'}));
+      svg.appendChild(el('circle',{cx:50,cy:76,r:8,fill:C.crustDark}));
+    }},
+  { name:'Moon', desc:'One slow arc across the night sky',
+    draw(svg){
+      bg(svg, C.board);
+      svg.appendChild(el('circle',{cx:46,cy:50,r:24,fill:C.cream}));
+      svg.appendChild(el('circle',{cx:56,cy:44,r:21,fill:C.board}));
+      svg.appendChild(el('circle',{cx:76,cy:30,r:2.6,fill:C.cheese}));
+    }},
+  { name:'Sky', desc:'The whole screen drifts through a day',
+    draw(svg, id){
+      bg(svg, [C.sauce, C.cheese], 'sk'+id);
+      svg.appendChild(el('circle',{cx:50,cy:58,r:22,fill:C.cream}));
+      svg.appendChild(el('rect',{x:0,y:66,width:100,height:34,fill:C.board,opacity:0.85}));
+    }},
+  { name:'Garden', desc:'A row of flowers grows in as you go',
+    draw(svg){
+      bg(svg, C.plate);
+      svg.appendChild(el('rect',{x:0,y:70,width:100,height:30,fill:C.crustDark}));
+      [30,50,70].forEach((x,i)=>{
+        svg.appendChild(el('line',{x1:x,y1:70,x2:x,y2:50,stroke:C.basil,['stroke-width']:3}));
+        svg.appendChild(el('circle',{cx:x,cy:46,r:6,fill:i%2?C.sauce:C.crust}));
+      });
+    }},
+  { name:'Monk', desc:'Sits, breathes, and settles as time passes',
+    draw(svg){
+      bg(svg, C.board);
+      svg.appendChild(el('circle',{cx:50,cy:50,r:26,fill:C.cheese,opacity:0.2}));
+      svg.appendChild(el('path',{d:'M32 66 Q50 30 68 66 Z', fill:C.sauce}));
+      svg.appendChild(el('circle',{cx:50,cy:28,r:9,fill:C.cream}));
+    }},
+  { name:'Cat Loaf', desc:'Grooms itself smooth, then tucks in — app icon', appIcon:true,
+    draw(svg){
+      bg(svg, C.crust);
+      svg.appendChild(el('ellipse',{cx:50,cy:64,rx:34,ry:20,fill:C.cream}));
+      svg.appendChild(el('path',{d:'M28 50 L20 30 L38 46 Z', fill:C.cream}));
+      svg.appendChild(el('path',{d:'M72 50 L80 30 L62 46 Z', fill:C.cream}));
+      // ear shading (app icon: --crust-dark)
+      svg.appendChild(el('path',{d:'M28 48 L24 34 L36 46 Z', fill:C.crustDark, opacity:0.85}));
+      svg.appendChild(el('path',{d:'M72 48 L76 34 L64 46 Z', fill:C.crustDark, opacity:0.85}));
+      svg.appendChild(el('circle',{cx:42,cy:58,r:2.2,fill:C.basil}));
+      svg.appendChild(el('circle',{cx:58,cy:58,r:2.2,fill:C.basil}));
+    }},
+];
+
+function makeIconSVG(style, id){
+  const svg = el('svg',{width:64,height:64,viewBox:'0 0 100 100'});
+  style.draw(svg, id);
+  return svg;
+}
+
+/* ---- Storyboard: static frames at key moments ---- */
+const storyRow = document.getElementById('storyRow');
+const STORY_MOMENTS = [
+  {label:'Belt enters', note:'Radial slides in from the right edge'},
+  {label:'Passing center', note:'Plant crosses center — caption updates to match'},
+  {label:'Mid-pass', note:'Moon and Sky cross together, belt keeps constant speed'},
+  {label:'Nearing the end', note:'Garden and Monk approach, still one continuous scroll'},
+  {label:'Closing icon', note:'Cat Loaf — the app icon — crosses center last'},
+  {label:'Auto-advance', note:'Belt exits left, screen transitions straight to Sign Up'},
+];
+STORY_MOMENTS.forEach((m, i)=>{
+  const card = document.createElement('div');
+  card.className = 'story';
+  const frame = document.createElement('div');
+  frame.className = 'story-frame';
+  // simple representative row of 3 icons shifted per moment
+  const offsetIndex = Math.min(i, STYLES.length-3);
+  const mini = document.createElement('div');
+  mini.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center;height:100%;';
+  for(let k=0;k<3;k++){
+    const s = STYLES[(offsetIndex+k) % STYLES.length];
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'width:34px;height:34px;border-radius:9px;overflow:hidden;flex-shrink:0;'+(k===1?'outline:2px solid '+C.crust+';outline-offset:2px;':'opacity:0.55;');
+    const svg = makeIconSVG(s, 'story'+i+'-'+k);
+    svg.setAttribute('width','34'); svg.setAttribute('height','34');
+    wrap.appendChild(svg);
+    mini.appendChild(wrap);
+  }
+  frame.appendChild(mini);
+  card.appendChild(frame);
+  const label = document.createElement('div'); label.className='story-label'; label.textContent=m.label;
+  const note = document.createElement('div'); note.className='story-note'; note.textContent=m.note;
+  card.appendChild(label); card.appendChild(note);
+  storyRow.appendChild(card);
+});
+
+/* ---- Live belt demo ---- */
+(function(){
+  const track = document.getElementById('beltTrack');
+  const viewport = document.getElementById('beltViewport');
+  const captionH = document.getElementById('captionH');
+  const captionS = document.getElementById('captionS');
+  const dotsRow = document.getElementById('dotsRow');
+
+  const GAP = 20, ICON = 64;
+  const STEP = ICON + GAP;
+
+  // build dots
+  STYLES.forEach(()=>{
+    const d = document.createElement('div'); d.className='dot'; dotsRow.appendChild(d);
+  });
+  const dots = Array.from(dotsRow.children);
+
+  function buildTrack(){
+    track.innerHTML = '';
+    STYLES.forEach((s,i)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'belt-icon';
+      const svg = makeIconSVG(s, 'belt'+i);
+      wrap.appendChild(svg);
+      track.appendChild(wrap);
+    });
+  }
+  buildTrack();
+
+  let running = false;
+  let startTime = null;
+  const DURATION = 4600; // ms for the full pass
+
+  function totalTrackWidth(){
+    return STYLES.length * STEP - GAP;
+  }
+
+  function play(){
+    running = true;
+    startTime = performance.now();
+    requestAnimationFrame(frame);
+  }
+
+  function frame(now){
+    if(!running) return;
+    const vpWidth = viewport.clientWidth;
+    const trackWidth = totalTrackWidth();
+    const elapsed = now - startTime;
+    const t = Math.min(1, elapsed / DURATION);
+    // start fully off-screen right, end fully off-screen left
+    const startX = vpWidth;
+    const endX = -trackWidth;
+    const x = startX + (endX - startX) * t;
+    track.style.transform = `translate(${x}px, -50%)`;
+
+    // determine which icon is nearest viewport center
+    const centerX = vpWidth/2;
+    let closestIdx = 0, closestDist = Infinity;
+    STYLES.forEach((s,i)=>{
+      const iconCenter = x + i*STEP + ICON/2;
+      const dist = Math.abs(iconCenter - centerX);
+      if(dist < closestDist){ closestDist = dist; closestIdx = i; }
+    });
+    captionH.textContent = STYLES[closestIdx].name;
+    captionS.textContent = STYLES[closestIdx].desc;
+    dots.forEach((d,i)=> d.classList.toggle('active', i===closestIdx));
+
+    if(t < 1){
+      requestAnimationFrame(frame);
+    } else {
+      running = false;
+      captionH.textContent = 'Cat Loaf';
+      captionS.textContent = 'Auto-advancing to Sign Up…';
+    }
+  }
+
+  document.getElementById('beltToggle').addEventListener('click', ()=>{
+    play();
+  });
+  document.getElementById('beltSkip').addEventListener('click', ()=>{
+    running = false;
+    captionH.textContent = 'Skipped';
+    captionS.textContent = '→ Sign Up';
+    track.style.transform = `translate(-9999px, -50%)`;
+  });
+
+  // autoplay once on load
+  setTimeout(play, 400);
+})();
+</script>
+
+</body>
+</html>
