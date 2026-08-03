@@ -21,25 +21,32 @@ Current (dev) Supabase project URL:
 Callback Supabase always uses (add this to Google & Apple for THIS project):
   https://pwgspnqodaokmkoyghcu.supabase.co/auth/v1/callback
 
-Deep link back into the app (lib/oauth.ts):
-  Standalone / dev build → timesense://auth/callback  (scheme may become
-  timesense-dev / timesense-sys / timesense per env when app.config.js lands)
+Deep link back into the app (lib/oauth.ts + app.config.js):
+  Dev client / development build → timesense-dev://auth/callback
+  Sys / preview build             → timesense-sys://auth/callback
+  Production build                → timesense://auth/callback
   Expo Go → exp://…/--/auth/callback
 
 ---------------------------------------------------------------------------
 A. Supabase redirect URLs (do this first — per project)
 ---------------------------------------------------------------------------
 1. Dashboard → Authentication → URL Configuration
-2. Site URL: timesense://auth/callback
-3. Additional Redirect URLs — add ALL of:
-   - timesense://auth/callback
+2. Site URL (match that project’s env):
+   - Dev:  timesense-dev://auth/callback
+   - Sys:  timesense-sys://auth/callback
+   - Prod: timesense://auth/callback
+3. Additional Redirect URLs — add that env’s scheme + Expo Go entries:
+   - timesense-dev://auth/callback   (dev project only)
+   - timesense-dev://**
+   - timesense-sys://auth/callback   (sys project only)
+   - timesense-sys://**
+   - timesense://auth/callback       (prod project only)
    - timesense://**
    - exp://**                    (Expo Go on device)
    - exp://127.0.0.1:8081/--/*
    - http://localhost:8081/**    (web testing)
 
-When env-specific schemes are wired, also add that env’s scheme
-(e.g. timesense-dev://auth/callback) — see docs/DEPLOYMENT.md.
+Full matrix: docs/DEPLOYMENT.md.
 
 ---------------------------------------------------------------------------
 B. Google (required for "Continue with Google")

@@ -34,9 +34,11 @@ yarn-error.*
 .env
 .env*.local
 .env.development
+.env.preview
 .env.staging
 .env.production
 .env.development.local
+.env.preview.local
 .env.staging.local
 .env.production.local
 

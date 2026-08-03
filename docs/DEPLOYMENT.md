@@ -11,20 +11,22 @@ Use this as the ordered to-do list. Checkboxes are for you (accounts, portals, s
 | Area | Status |
 |------|--------|
 | Expo app (SDK 54), Expo Router, TypeScript | Done |
-| App name / slug `TimeSense` / `timesense` | Done (`app.json`) |
-| Bundle / package IDs (env-specific) | **Decided** — not wired in repo yet (still `com.timesense.app` in `app.json`) |
-| URL scheme `timesense` + path `/auth/callback` | Done (`app.json`, `lib/oauth.ts`) — shared scheme until `app.config.js` |
-| `eas.json` profiles: `development`, `preview`, `production` | Partial — no per-env IDs / `APP_ENV` / store distribution flags |
+| App name / slug `TimeSense` / `timesense` | Done (`app.config.js`) |
+| Bundle / package IDs (env-specific) | **Done** — `com.timesense.dev` / `.sys` / `com.timesense` via `APP_ENV` |
+| URL schemes (env-specific) + path `/auth/callback` | **Done** — `timesense-dev` / `timesense-sys` / `timesense` (`app.config.js`, `lib/oauth.ts`) |
+| `eas.json` profiles: `development`, `preview`, `production` | **Done** — `APP_ENV` per profile; preview APK; production store + AAB |
 | Migrations `001`–`004` in repo | Done — apply per env via SQL Editor (see promotion guide) |
 | Local `.env` + `.env.example` (`EXPO_PUBLIC_SUPABASE_URL` + `KEY`/`ANON_KEY`) | Done |
 | Social auth setup docs (`supabase/SETUP.txt`, `SOCIAL_AUTH_SETUP.txt`) | Done — update per env when creating sys/prod |
 | GitHub remote `imkumaraju/TimeSense` | Done |
 | Promotion guide (`docs/GITHUB_PROMOTION.md`) | Done |
-| `dev` / `sys` / `main` branches on remote | Done (same tip as `main` at create time) |
+| `dev` / `sys` / `main` branches on remote | Done |
 | Lightweight PR CI (Jest on PRs to `dev`/`sys`/`main`) | In repo (`.github/workflows/ci.yml`) |
-| EAS account login / linked Expo project / `extra.eas.projectId` | **Missing** |
-| `app.config.js` (env-based name + bundle id) | **Missing** |
+| EAS account login / linked Expo project `@raju003/timesense` | **Done** — projectId `c1c68318-e26c-477f-8074-b4cba4e48901` |
+| `app.config.js` (env-based name + bundle id + scheme) | **Done** |
+| EAS env vars (Supabase URL + anon key per environment) | **You** — create with `eas env:create` (see Phase 3) |
 | Supabase projects | Dev + sys live; **prod** blocked by free-tier 2-project cap |
+| Supabase redirect allow lists for new schemes | **You** — add `timesense-dev://…` / `timesense-sys://…` (see below) |
 | GitHub Actions keep-alive | **Missing** (prod) |
 | Store listings / TestFlight / Play tracks | **Missing** |
 | README | **Missing** |
@@ -41,15 +43,19 @@ Use this as the ordered to-do list. Checkboxes are for you (accounts, portals, s
 
 **Git promote flow (PRs only):** see **[GITHUB_PROMOTION.md](./GITHUB_PROMOTION.md)** — `feature/*` → `dev` → `sys` → `main`, including how migrations travel with the same PRs.
 
-**Migration from today:** repo and Apple docs still say `com.timesense.app`. Treat that as the old single-ID placeholder. Do **not** create new Apple/Google/store apps under `com.timesense.app`. When wiring `app.config.js`, replace it with the three IDs above. Update Apple Client IDs lists from `com.timesense.app` → the three new IDs (plus `host.exp.Exponent` for Expo Go).
+**IDs are wired in `app.config.js`.** Old placeholder `com.timesense.app` is retired — do **not** create Apple/Google/store apps under it. Apple Client IDs must list the three IDs above (plus `host.exp.Exponent` for Expo Go).
 
-**Deep link scheme (today vs later):**
+**Deep link schemes (live in `app.config.js` + `lib/oauth.ts`):**
 
-| Today (code) | Planned with `app.config.js` (recommended for side-by-side installs) |
-|--------------|----------------------------------------------------------------------|
-| All builds: scheme `timesense` → `timesense://auth/callback` | Dev: `timesense-dev://auth/callback` · Sys: `timesense-sys://auth/callback` · Prod: `timesense://auth/callback` |
+| `APP_ENV` / EAS profile | Bundle / package | Scheme | OAuth redirect |
+|-------------------------|------------------|--------|----------------|
+| `development` | `com.timesense.dev` | `timesense-dev` | `timesense-dev://auth/callback` |
+| `preview` (sys) | `com.timesense.sys` | `timesense-sys` | `timesense-sys://auth/callback` |
+| `production` | `com.timesense` | `timesense` | `timesense://auth/callback` |
 
 OAuth path is always `/auth/callback` (`lib/oauth.ts`, `app/auth/callback.tsx`). Expo Go still uses `exp://…/--/auth/callback` (custom schemes are not owned by Expo Go).
+
+**You must update Supabase redirect allow lists** (dev + sys projects) to include the new env schemes — see [Auth → URL Configuration](#2-auth--url-configuration). Without that, standalone / dev-client Google sign-in will fail after the scheme change.
 
 ---
 
@@ -149,31 +155,36 @@ Do this on **each** project after it exists. Existing project `pwgspnqodaokmkoyg
 
 #### 2. Auth → URL Configuration
 
-| Field | Dev (today / until schemes split) | After `app.config.js` env schemes |
-|-------|-----------------------------------|-----------------------------------|
-| **Site URL** | `timesense://auth/callback` | Dev: `timesense-dev://auth/callback` · Sys: `timesense-sys://auth/callback` · Prod: `timesense://auth/callback` |
-| **Redirect allow list** | see below | swap scheme prefix per env |
+| Field | Dev (`pwgspnqodaokmkoyghcu`) | Sys (`uihapuiivlrpfxftyivo`) | Prod (future) |
+|-------|------------------------------|------------------------------|---------------|
+| **Site URL** | `timesense-dev://auth/callback` | `timesense-sys://auth/callback` | `timesense://auth/callback` |
+| **Redirect allow list** | that env’s scheme + Expo Go entries | same pattern | same pattern |
 
-**Redirect URLs to add on every project (minimum, matches current code):**
+**Redirect URLs — add on each project (own scheme + shared Expo Go):**
 
 ```
-timesense://auth/callback
-timesense://**
+# Dev project
+timesense-dev://auth/callback
+timesense-dev://**
 exp://**
 exp://127.0.0.1:8081/--/*
 http://localhost:8081/**
-```
 
-**Also add when env-specific schemes land** (each project only needs its own + shared Expo Go entries):
-
-```
-timesense-dev://auth/callback    # timesense-dev project
-timesense-dev://**
-timesense-sys://auth/callback    # timesense-sys project
+# Sys project
+timesense-sys://auth/callback
 timesense-sys://**
-timesense://auth/callback        # timesense-prod (same as Site URL)
+exp://**
+exp://127.0.0.1:8081/--/*
+http://localhost:8081/**
+
+# Prod project (when created)
+timesense://auth/callback
 timesense://**
+exp://**
+…
 ```
+
+Keep the old `timesense://**` entries temporarily if you still have builds on the shared scheme; remove once all clients use env-specific schemes.
 
 If sign-in returns to the browser but not the app: Auth screen in `__DEV__` shows the live redirect URI — paste that **exact** string into Additional Redirect URLs.
 
@@ -222,9 +233,9 @@ Do this so Google/Supabase stay consistent and nothing breaks mid-cutover:
 2. [ ] Create **sys** + **prod** Supabase projects; run migrations `001`–`004` on each.  
 3. [ ] Google Cloud: create three **Web** OAuth clients; add each project’s `…/auth/v1/callback` redirect URI.  
 4. [ ] Supabase per project: URL Configuration (Site URL + redirects) → Google provider (that env’s Web client) → Apple Client IDs (new bundle IDs).  
-5. [ ] Verify Google sign-in still works against **dev** (Expo Go + current `com.timesense.app` / `timesense://` is OK until repo wiring).  
-6. [ ] **Then** ask for in-repo work: `app.config.js` + `eas.json` + EAS env vars (bundle IDs + optional scheme split).  
-7. [ ] After app config ships: add env-specific deep links to Supabase redirect lists; update Apple Developer App IDs / capabilities for the three new bundle IDs.
+5. [ ] Verify Google sign-in against **dev** (Expo Go still uses `exp://…`).  
+6. [x] Repo: `app.config.js` + `eas.json` + env schemes (done).  
+7. [ ] Add env-specific deep links to Supabase redirect lists; set EAS env vars; register Apple Developer App IDs for the three bundle IDs.
 
 **Do not** change Google redirect URIs away from Supabase callbacks. **Do not** point production EAS builds at the current (dev) Supabase project.
 
@@ -298,49 +309,58 @@ npx supabase db push
 
 There is no `supabase/config.toml` in the repo yet — `supabase init` / `link` will create it (safe to commit config; not secrets).
 
-Local env files (gitignored):
+Local env files (gitignored — already covered by `.gitignore`):
 
 ```
-.env.development   → timesense-dev
-.env.staging       → timesense-sys
-.env.production    → timesense-prod
+.env                 → optional fallback (Expo loads it always)
+.env.development     → timesense (dev) — used by `npx expo start` (NODE_ENV=development)
+.env.staging         → optional local alias for sys (not auto-loaded; see below)
+.env.production      → timesense-prod (when you have one)
 ```
 
 Use the names `lib/supabase.ts` already understands (`EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_KEY` or `ANON_KEY`).
 
+**How local `npx expo start` picks env:**
+
+1. **Native IDs / scheme** come from `APP_ENV` in `app.config.js` (default **`development`** → `com.timesense.dev` / `timesense-dev`). Override with e.g. `$env:APP_ENV='preview'; npx expo start` (PowerShell) for a sys-shaped config.
+2. **Supabase URL/key** come from Expo’s dotenv load of `.env` / `.env.development` (and `.env.local`). Put **dev** keys in `.env.development` for day-to-day. For a local sys smoke test, temporarily point those vars at the sys project or copy sys values into `.env.local` (gitignored).
+3. EAS builds ignore local `.env*` for secrets — they use **EAS environment variables** (below). `APP_ENV` is set in `eas.json` per profile.
+
+Optional: `npx eas-cli env:pull --environment development` to sync EAS vars into a local file (still gitignored).
+
 ---
 
-## Phase 3 — Repo config for multi-env builds (repo — after console work)
+## Phase 3 — Repo config for multi-env builds (**done in repo**)
 
-**Not implemented yet.** After you finish Supabase + Google Console steps, ask Cursor to:
+Implemented:
 
-1. Convert `app.json` → `app.config.js` that reads `APP_ENV` and sets:
-   - display name: TimeSense Dev / Staging / TimeSense  
-   - `ios.bundleIdentifier` / `android.package`: `com.timesense.dev` / `.sys` / `com.timesense`  
-   - optional env-specific `scheme`: `timesense-dev` / `timesense-sys` / `timesense`  
-2. Expand `eas.json` (`APP_ENV`, per-profile packages, `production.distribution: "store"`). Keep current Android `apk` (preview) / `app-bundle` (production).  
-3. Add `expo-dev-client` for the `development` profile.  
-4. Align `.gitignore` for `.env.development`, `.env.staging`, `.env.production`.  
-5. Optional: `eas env:pull --environment development` for local dev.
+1. `app.config.js` — `APP_ENV` → display name, `ios.bundleIdentifier` / `android.package`, `scheme`, `extra.appEnv`; preserves `extra.eas.projectId`.
+2. `eas.json` — `APP_ENV` on each profile; `developmentClient` + internal; preview internal APK; production **store** + AAB.
+3. `expo-dev-client` dependency for the development profile.
+4. `lib/oauth.ts` — redirect scheme from `Constants.expoConfig.scheme` (env-specific).
+5. `.gitignore` already ignores `.env`, `.env.development`, `.env.staging`, `.env.production`, and `*.local` variants.
 
-**EAS env vars (you run after `eas login` + `eas init`):**  
-Use current EAS env API (`eas secret:create` is deprecated):
+**EAS env vars (you — do not commit secrets):**
+
+Get **anon/publishable** keys from each Supabase dashboard → Settings → API. Never paste service-role keys into the app.
 
 ```bash
-# development → timesense-dev
-npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://<dev-ref>.supabase.co --environment development --visibility plaintext
-npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_KEY --value <dev-key> --environment development --visibility sensitive
+# development → timesense (dev)
+npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://pwgspnqodaokmkoyghcu.supabase.co --environment development --visibility plaintext
+npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_KEY --value <dev-anon-key> --environment development --visibility sensitive
 
 # preview → timesense-sys
 npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://uihapuiivlrpfxftyivo.supabase.co --environment preview --visibility plaintext
-npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_KEY --value <sys-key> --environment preview --visibility sensitive
+npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_KEY --value <sys-anon-key> --environment preview --visibility sensitive
 
-# production → timesense-prod
-npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://<prod-ref>.supabase.co --environment production --visibility plaintext
-npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_KEY --value <prod-key> --environment production --visibility sensitive
+# production — when timesense-prod exists (omit until then)
+# npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://<prod-ref>.supabase.co --environment production --visibility plaintext
+# npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_KEY --value <prod-anon-key> --environment production --visibility sensitive
 ```
 
-Also set `APP_ENV` per profile in `eas.json` (not secret).
+Dashboard alternative: [expo.dev](https://expo.dev) → `@raju003/timesense` → Environment variables → same names per environment (`development` / `preview` / `production`).
+
+`APP_ENV` is set in `eas.json` (not an EAS secret).
 
 ---
 
@@ -437,10 +457,10 @@ Needs: `EXPO_TOKEN`, Supabase access tokens / DB passwords as GitHub secrets.
 | Branches `dev` / `sys` / `main` | Guide ready; push `dev`/`sys` if missing on remote |
 | Promotion docs + PR CI (test only) | `docs/GITHUB_PROMOTION.md` + `.github/workflows/ci.yml` |
 | Supabase × 3 + identical migrations | Dev + sys live; prod pending; migrations in repo |
-| Distinct app IDs per env | **Decided**; repo still `com.timesense.app` until Phase 3 |
-| `app.config.js` + `APP_ENV` | Missing |
-| `eas.json` env matrix | Profiles exist; IDs/`APP_ENV`/store flags incomplete |
-| EAS secrets per environment | Not configured; CLI not logged in |
+| Distinct app IDs per env | **Done** in `app.config.js` |
+| `app.config.js` + `APP_ENV` | **Done** |
+| `eas.json` env matrix | **Done** (`APP_ENV`, store distribution, APK/AAB) |
+| EAS secrets per environment | **You** — `eas env:create` (Phase 3 commands) |
 | Keep-alive workflow | Missing |
 | Manual `db dump` habit | Missing |
 | CI auto-promote/build | Missing (correct to wait) |
@@ -454,7 +474,7 @@ Needs: `EXPO_TOKEN`, Supabase access tokens / DB passwords as GitHub secrets.
 2. Confirm **sys** Supabase has migrations `001`–`004`; finish OAuth for sys (Google redirect for `uihapuiivlrpfxftyivo`).  
 3. Resolve 3rd Supabase slot (prod) when needed — do not block Git promote on prod.  
 4. Phase 0 accounts (Expo login + Apple/Google if targeting stores).  
-5. Phase 3: `eas init`, env vars, then ask for `app.config.js` / `eas.json` update in-repo.  
-6. Phase 4: one development device build.  
+5. Phase 3 remaining: Supabase redirect schemes + `eas env:create` for development/preview.  
+6. Phase 4: one development device build (`npx eas-cli build --profile development --platform android`).  
 7. Phase 6: prod keep-alive before any real users.  
 8. Phase 5 when product-ready; Phase 7 last.

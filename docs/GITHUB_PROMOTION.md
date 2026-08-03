@@ -12,7 +12,7 @@ Manual promote via PRs. No environment skips. Code and DB migrations travel toge
 
 **Rule:** feature work lands in `dev` first → promote to `sys` → promote to `main`. Never open a PR that skips an env (e.g. `dev` → `main`).
 
-Related checklist: [DEPLOYMENT.md](./DEPLOYMENT.md) (OAuth, EAS, stores). App multi-env wiring (`app.config.js`) is separate and not required to use this Git flow.
+Related checklist: [DEPLOYMENT.md](./DEPLOYMENT.md) (OAuth, EAS, stores). App multi-env wiring (`app.config.js` + `APP_ENV`) is in the repo; set EAS secrets and Supabase redirect schemes before building.
 
 ---
 
