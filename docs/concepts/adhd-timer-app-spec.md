@@ -1,5 +1,4 @@
 # TimeSense — ADHD Time-Blindness App
-
 ### Build Spec for Cursor
 
 ## 1. Concept
@@ -8,9 +7,7 @@ An app that helps people with ADHD *feel* time passing instead of reading it, an
 a personal calibration history between predicted vs. actual task duration.
 
 Two core features:
-
-1. **Visual/Analog Timer** — default is an **eating pizza** (time left = pizza left on the
-   plate); also pie / draining bar / ring. Not digit-first.
+1. **Visual/Analog Timer** — time shown as a shrinking pie or draining color bar, not digits.
 2. **Time Cost Estimator** — before a task, log a predicted duration; after, log actual duration.
    Over weeks, the app shows patterns ("you underestimate cleaning tasks by ~40%").
 
@@ -19,7 +16,6 @@ Two core features:
 ## 2. Tech Stack (cross-platform iOS + Android)
 
 **Framework:** React Native + Expo (managed workflow)
-
 - Single codebase, ships to both App Store and Play Store.
 - Expo handles push notifications, background tasks, and OTA updates without native build pain.
 - Use **Expo Router** for file-based navigation.
@@ -27,10 +23,8 @@ Two core features:
 **Language:** TypeScript throughout.
 
 **UI / Animation:**
-
-- `react-native-reanimated` (v3) — for smooth 60fps timer animations when used (pizza clip /
-  pie / bar / ring). Expo Go may use simpler non-Reanimated paths for stability.
-- `react-native-svg` — to draw pizza / pie / arc / bar shapes.
+- `react-native-reanimated` (v3) — for smooth 60fps timer animations (shrinking pie, draining bar).
+- `react-native-svg` — to draw the pie/arc/bar shapes.
 - `react-native-gesture-handler` — for any drag/tap interactions.
 - Avoid heavy UI kits; build custom components — the timer visual is the product, it needs
   to be bespoke and fluid, not a generic progress bar.
@@ -39,7 +33,6 @@ Two core features:
 the app stays simple.
 
 **Local storage / persistence:**
-
 - `expo-sqlite` (via Drizzle ORM or raw SQL) for task history, predictions vs. actuals —
   this is relational data (tasks, sessions, categories) so SQLite is the right fit over
   AsyncStorage.
@@ -49,7 +42,6 @@ the app stays simple.
 ("still working on this?").
 
 **Background timer accuracy:**
-
 - Timers must keep accurate elapsed time even if the app is backgrounded — store a
   `startTimestamp` + `durationSeconds` and always calculate `elapsed = now - startTimestamp`,
   never rely on a running JS interval alone. Use `expo-task-manager` / background fetch only
@@ -62,7 +54,6 @@ victory-native is simpler to start with for bar/scatter comparisons of predicted
 **Backend & Auth:** **Supabase** — Postgres database + built-in auth + storage, all on one
 cheap/generous free tier (500MB DB, 50k monthly active users free; paid tier starts around
 $25/mo only once you outgrow that). Reasons it fits here:
-
 - **Auth** — `@supabase/supabase-js` + `@supabase/auth-helpers` gives email/password, magic
   link, and OAuth (Google/Apple — Apple Sign-In is required by App Store if you offer any
   other social login) out of the box. No need to run your own auth server.
@@ -81,15 +72,14 @@ durations, categories) is naturally relational and benefits from real SQL + RLS.
 
 **Sync strategy:** Keep `expo-sqlite` as the local source of truth the timer UI reads/writes
 to instantly (so the core timer experience never waits on a network call), then sync rows to
-Supabase in the background (see §4 for the cost-conscious rules):
-
+Supabase in the background:
 - On task complete (write), push the row to Supabase immediately if online, else queue it
   (a simple `synced` boolean column) and flush the queue on reconnect/app foreground.
-- On login / app foreground, **delta-pull** rows for `auth.uid()` where
-  `updated_at > :last_sync_watermark` into local SQLite — never re-fetch full history on
-  routine sync. Full pull is only for a brand-new empty local DB after login.
-- This gives offline-first reliability plus cross-device backup without making the live timer
-  depend on network latency.
+- On login (including a fresh install/new device), pull all rows for `auth.uid()` from
+  Supabase into local SQLite.
+- This gives offline-first reliability plus cross-device backup — the whole point of
+  "preserve the data somewhere cheap and reliable" without making the live timer depend on
+  network latency.
 
 **Testing:** Jest + React Native Testing Library for logic (especially the elapsed-time
 math and estimator statistics).
@@ -102,15 +92,18 @@ Submit for store submission.
 ## 3. Core Screens
 
 ### 3.0 Daily Open — Style Showcase
-
-- Shown on the **first open of each local calendar day** (`timesense.showcase.last_shown_date`).
-- Conveyor belt of style icons (Radial → Slices → Plant → Moon → Sky → Garden → Monk →
-  **Cat Loaf**), one pass (~4.5s), then Home. Skip always available.
-- Closing tile is the **app icon** (Cat Loaf: cream loaf, crust-dark ear shading, basil eyes
-  on crust). See `docs/concepts/first-launch-showcase.md`.
+- Shown on the **first app open of each local calendar day** (AsyncStorage
+  `timesense.showcase.last_shown_date` = device-local `YYYY-MM-DD`). Same-day reopens skip it.
+- A horizontal, auto-playing conveyor of timer-style icons (Radial → Slices → Plant → Moon →
+  Sky → Garden → Monk → **Cat Loaf**) scrolling once right→left (~4.5s), then auto-advancing
+  to **Home**. Skip is always available. Does not force Sign Up on every daily open.
+- **Closing icon:** Cat Loaf — the chosen app icon (Section 8) — so the last tile matches the
+  home-screen mark (cream loaf + crust-dark ear shading + basil eyes on `--crust`).
+- Purpose: remind that the app has multiple timer styles in a few seconds of motion.
+- Full interaction and motion spec: `docs/concepts/first-launch-showcase.html` +
+  `docs/concepts/first-launch-showcase.md`.
 
 ### 3.1 Sign Up / Log In
-
 - Email + password, plus "Sign in with Apple" (required alongside any other social option
   for App Store approval) and optionally "Sign in with Google."
 - Magic-link option is a nice zero-password fallback (good for a low-friction audience —
@@ -121,39 +114,33 @@ Submit for store submission.
   or after their first few completed timers, framed as "back up your data."
 
 ### 3.2 Home / Today
-
 - List of active/recent timers.
 - Big "+ New Timer" button.
 - Quick-start presets (e.g. "5 min", "25 min Pomodoro", "Custom").
 
 ### 3.3 New Timer / Task Setup
-
-- Task name (optional — if blank, use a timestamp title e.g. `Timer · Aug 1, 12:03 PM`).
-- Description (optional short text — what you're working on).
+- Task name (optional — allow fully anonymous "just start a timer" for zero-friction use).
 - Predicted duration input (this is the "time cost estimator" prediction step) — big, fast
   number picker, not a tiny text field.
-- Timer visual style toggle: **Eating Pizza** (default) / Pie / Draining Bar / Ring.
+- Timer visual style toggle: Shrinking Pie / Draining Bar / Draining Circle-ring.
 - Category tag (optional): Chores, Work, Study, Errands, Creative, Other — used later for
   calibration analytics.
 
 ### 3.4 Active Timer (the core screen)
-
-- Full-screen visual: **pizza** (default) / pie / bar / ring shrinking in real time; non-pizza
-  styles may color-shift (e.g. green → yellow → red) for sensory feedback.
+- Full-screen visual: pie/bar/ring shrinking in real time, color shifting (e.g. green →
+  yellow → red as time runs low) for extra sensory feedback.
 - No digital countdown shown by default — optional toggle to reveal MM:SS for users who
   want both.
 - Pause/resume, add time (+5 min), and "I'm done early" / "finish" buttons.
 - Gentle sound/haptic pulse at key milestones (halfway, 1 min left, time's up) — configurable.
 
 ### 3.5 Task Complete → Actual Duration Capture
-
 - On finish (early or on time), ask: "How long did that actually take?" — pre-filled with
   the timer's elapsed time if they let it run to completion, editable if they multitasked
   or paused a lot.
 - Quick "How did that feel?" — optional 3-icon mood tag (too fast / about right / dragged on).
 
 ### 3.6 Calibration History / Insights
-
 - Chart: predicted vs. actual, per category, over time.
 - Plain-language insight cards: "You tend to underestimate [Chores] by 35%." Generated from
   simple stats (rolling average of `(actual - predicted) / predicted` per category), not AI —
@@ -161,7 +148,6 @@ Submit for store submission.
 - Filter by category / time range.
 
 ### 3.7 Settings
-
 - Account (email shown, sign out, delete account — deleting must cascade-delete their
   Supabase rows via RLS-safe server logic or a Postgres `ON DELETE CASCADE`).
 - Default timer visual style.
@@ -180,7 +166,6 @@ not row count. Every decision below optimizes for *fewer, smaller* network round
 for a smaller schema.
 
 Rules Cursor should follow throughout implementation:
-
 1. **Local-first** — `expo-sqlite` is what the UI reads/writes; Supabase is a backup/sync
    target, never a live dependency for rendering the timer.
 2. **Delta sync only** — never re-fetch a user's full history. Sync only rows changed since
@@ -199,7 +184,7 @@ CREATE TABLE profiles (
   id TEXT PRIMARY KEY,               -- matches Supabase auth.users.id once signed in
   display_name TEXT,
   timezone TEXT,
-  default_visual_style TEXT DEFAULT 'pizza',
+  default_visual_style TEXT DEFAULT 'pie',
   streak_count INTEGER DEFAULT 0,
   freezes_available INTEGER DEFAULT 2,
   last_active_date TEXT
@@ -208,12 +193,11 @@ CREATE TABLE profiles (
 CREATE TABLE tasks (
   id TEXT PRIMARY KEY,               -- generate as UUID client-side so it matches Supabase's id
   user_id TEXT,                      -- null until signed in / synced
-  name TEXT,                        -- optional at input; blank → timestamp title in app
-  description TEXT,                  -- optional
+  name TEXT,
   category TEXT,
   predicted_seconds INTEGER NOT NULL,
   actual_seconds INTEGER,
-  visual_style TEXT NOT NULL DEFAULT 'pizza',  -- 'pizza' | 'pie' | 'bar' | 'ring'
+  visual_style TEXT NOT NULL DEFAULT 'pie',
   started_at INTEGER NOT NULL,       -- unix timestamp
   ended_at INTEGER,
   mood_tag TEXT,                     -- 'too_fast' | 'about_right' | 'dragged_on' | null
@@ -247,7 +231,7 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT,
   timezone TEXT,
-  default_visual_style TEXT DEFAULT 'pizza',
+  default_visual_style TEXT DEFAULT 'pie',
   streak_count INTEGER DEFAULT 0,
   freezes_available INTEGER DEFAULT 2,
   last_active_date DATE,
@@ -258,11 +242,10 @@ CREATE TABLE tasks (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT,
-  description TEXT,                  -- optional; applied via 001 (or 002 on older DBs)
   category TEXT,
   predicted_seconds INTEGER NOT NULL,
   actual_seconds INTEGER,
-  visual_style TEXT NOT NULL DEFAULT 'pizza',
+  visual_style TEXT NOT NULL DEFAULT 'pie',
   started_at TIMESTAMPTZ NOT NULL,
   ended_at TIMESTAMPTZ,
   mood_tag TEXT,
@@ -349,58 +332,25 @@ colors, etc.).
 
 ## 5. Build Order (suggested milestones for Cursor)
 
-Use this as the step-by-step implementation checklist. Complete each milestone before moving to the next unless noted.
-
-| Step | Milestone | Status |
-|------|-----------|--------|
-| 1 | **Scaffold** — `npx create-expo-app` with TypeScript + Expo Router, install core deps (reanimated, svg, gesture-handler, sqlite, zustand, supabase-js). | ✅ (currently on **Expo SDK 54** for Play Store Expo Go compatibility) |
-| 2 | **Supabase project setup** — create project, run schema + RLS from §4.2–4.3 (`001`–`003` migrations), enable email and Apple/Google auth providers. | ✅ (`001`+`002` applied on live project; run `003` if not yet; keys in `.env`) |
-| 3 | **Timer math core** — timestamp-based elapsed/remaining calculation, unit-tested in isolation before any UI. | ✅ |
-| 4 | **Visual timer component** — build the shrinking pie (SVG arc animated via reanimated) as a standalone component with a Storybook-style test screen; then the draining bar variant. | ✅ |
-| 5 | **Active Timer screen** — wire the visual component to real timer state, add pause/resume/finish. | ✅ |
-| 6 | **Auth screens + guest mode** — sign up/log in flow, session persistence (`supabase.auth.onAuthStateChange`), and the local-only guest path. | ✅ |
-| 7 | **New Timer / task setup screen** — predicted duration input, optional name/description, save to local DB on start. | ✅ |
-| 8 | **Task complete flow** — capture actual duration + mood, write to SQLite, push to Supabase (or queue if offline/guest). | ✅ (actual duration + push/queue; mood UI still optional) |
-| 9 | **Sync layer** — background flush of unsynced rows, delta pull-on-login / foreground (`updated_at` watermark). | ✅ |
-| 10 | **Home screen** — list + quick-start presets. | ✅ (presets + new timer; recent list still light) |
-| 11 | **Calibration/Insights screen** — query local SQLite only, compute rolling stats, render chart. | ⬜ |
-| 12 | **Settings + notifications** — account management, sync status, polish pass. | ⬜ |
-| 13 | **EAS Build** — get a real device build on both platforms early (ideally after step 4 or 5) rather than waiting until the end — animation performance and haptics need real-device testing, not just simulator. | ⬜ |
-
-### Step details
-
 1. **Scaffold** — `npx create-expo-app` with TypeScript + Expo Router, install core deps
    (reanimated, svg, gesture-handler, sqlite, zustand, supabase-js).
-
 2. **Supabase project setup** — create project, run the schema + RLS policy from section 4.2,
    enable email and Apple/Google auth providers in the dashboard.
-
 3. **Timer math core** — timestamp-based elapsed/remaining calculation, unit-tested in
    isolation before any UI.
-
 4. **Visual timer component** — build the shrinking pie (SVG arc animated via reanimated)
    as a standalone component with a Storybook-style test screen; then the draining bar variant.
-
 5. **Active Timer screen** — wire the visual component to real timer state, add
    pause/resume/finish.
-
 6. **Auth screens + guest mode** — sign up/log in flow, session persistence
    (`supabase.auth.onAuthStateChange`), and the local-only guest path.
-
 7. **New Timer / task setup screen** — predicted duration input, save to local SQLite on start.
-
 8. **Task complete flow** — capture actual duration + mood, write to SQLite, push to Supabase
    (or queue if offline/guest).
-
-9. **Sync layer** — background flush of unsynced rows, delta pull-on-login / foreground for
-   existing accounts (`updated_at` watermark — see §4.4).
-
+9. **Sync layer** — background flush of unsynced rows, pull-on-login for existing accounts.
 10. **Home screen** — list + quick-start presets.
-
 11. **Calibration/Insights screen** — query local SQLite, compute rolling stats, render chart.
-
 12. **Settings + notifications** — account management, sync status, polish pass.
-
 13. **EAS Build** — get a real device build on both platforms early (step 4 or 5) rather
     than waiting until the end — animation performance and haptics need real-device testing,
     not just simulator.
@@ -413,15 +363,7 @@ Prioritized additions once the core timer + estimator + auth loop is stable. The
 the core mechanic rather than adding new surface area — treat as the next milestone after
 section 5's build order, not part of v1.
 
-| Step | Feature | Status |
-|------|---------|--------|
-| 7.1 | **Learned Defaults** | ⬜ |
-| 7.2 | **Interruption Tracking** | ⬜ |
-| 7.3 | **Lock-Screen / Widget Timer** | ⬜ |
-| 7.4 | **Re-engagement / Anti-Abandonment** | ⬜ |
-
-### 7.1 Learned Defaults
-
+### 6.1 Learned Defaults
 - Once a task name/category has been timed a few times, auto-suggest a predicted duration
   based on the user's own rolling average for that name/category instead of a blank field.
 - Removes a decision point exactly when motivation is fragile (the moment right before
@@ -430,18 +372,16 @@ section 5's build order, not part of v1.
   `category`, average their `actual_seconds`, pre-fill the predicted duration input with it
   (still editable).
 
-### 7.2 Interruption Tracking
-
+### 6.2 Interruption Tracking
 - One-tap "got distracted" button visible during an active timer.
 - Pauses the timer and logs a gap (start/end timestamp of the interruption) tagged to that
   task session.
 - Add a `interruptions` table: `id`, `task_id` (FK), `started_at`, `ended_at`.
 - Surface as its own insight over time, separate from duration miscalibration — e.g. "your
   focus sessions average 2.3 interruptions" — shown alongside the existing calibration charts
-  in the Insights screen (section 3.5).
+  in the Insights screen (section 3.6).
 
-### 7.3 Lock-Screen / Widget Timer
-
+### 6.3 Lock-Screen / Widget Timer
 - iOS: build with **WidgetKit** via Expo's config plugin support (or an Expo dev client with
   a native WidgetKit target) — shows the live shrinking pie/bar on the Lock Screen and Home
   Screen widget gallery, updating via `TimelineProvider`.
@@ -453,11 +393,10 @@ section 5's build order, not part of v1.
   the standard Expo managed workflow (a custom dev client or EAS Build with config plugins) —
   budget more time for it than the other two.
 
-### 7.4 Re-engagement / Anti-Abandonment
-
+### 6.4 Re-engagement / Anti-Abandonment
 - **Forgiving streaks** — a streak counter with a "streak freeze" or grace day so one missed
   day doesn't zero out weeks of momentum. Store `streak_count`, `freezes_available`,
-  `last_active_date` in the local `profiles` table (mirrored to Supabase).
+  `last_active_date` in the local `settings`/user table.
 - **Gentle re-entry nudge** — if the app hasn't been opened in a few days
   (check `last_active_date` on app foreground or via a scheduled local notification), send a
   single low-pressure notification — e.g. "no worries, want to log just one thing today?" —
@@ -480,9 +419,15 @@ section 5's build order, not part of v1.
 
 ## 8. App Icon
 
-**Chosen: Cat Loaf** (closes the daily showcase belt).
+**Chosen: Cat Loaf** (Concept 08 from the App Icon Concepts doc).
 
-- Cream loaf silhouette with triangle ears on solid crust-orange; ear inners use crust-dark;
-  eyes basil — palette-only, no new hues.
-- Deliver as a standard icon set (1024×1024 master + iOS/Android adaptive sizes) when final
-  artwork is ready; showcase tile is the flat placeholder until then.
+- A rounded loaf-shaped cat silhouette (cream) with two triangle ears on a solid crust-orange
+  background — built entirely from the app's existing palette, no new colors introduced.
+- Selected for two reasons: it stays legible as a bold, simple silhouette at true icon sizes
+  (tagged "Works small" in the concepts doc), and it's distinctive/memorable in a way a more
+  literal timer motif (pizza slice, hourglass) isn't — it doesn't look like every other
+  productivity or timer app on the home screen.
+- Colors: background `--crust`; loaf body `--cream`; ear shading `--crust-dark`; eyes `--basil`.
+- Deliver as a standard icon set (1024×1024 master, iOS/Android adaptive sizes) once final
+  artwork is produced — the concepts doc version is a flat-design placeholder suitable for
+  early builds and store listing drafts, not final production art.

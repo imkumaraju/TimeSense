@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeSense — Growing Plant Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crust:#D98A3D;
+    --crust-dark:#B5691F;
+    --sauce:#C1442D;
+    --cheese:#FFE29B;
+    --basil:#4B7A4C;
+    --board:#241A14;
+    --board-light:#332419;
+    --plate:#FBF5E9;
+    --cream:#FFF8EC;
+    --ink:#241A14;
+    --muted:#8A7561;
+    --wilt:#8A6A4A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--board);
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(217,138,61,0.07), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(75,122,76,0.10), transparent 45%);
+    color:var(--cream);
+    font-family:'Inter',sans-serif;
+    padding:44px 32px 90px;
+  }
+  header{max-width:900px;margin:0 auto 40px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--basil);font-weight:500;margin-bottom:10px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:900;font-size:clamp(28px,4.4vw,44px);
+    line-height:1.06;margin:0 0 14px;color:var(--cream);
+  }
+  header p{font-size:15px;line-height:1.6;color:#CBB79E;max-width:600px;margin:0;}
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;
+    text-transform:uppercase;color:var(--crust);margin:44px auto 18px;max-width:900px;
+  }
+
+  /* ---- Stage board ---- */
+  .stage-scroll{overflow-x:auto;padding:6px 4px 20px;}
+  .stage-row{display:flex;gap:16px;min-width:max-content;}
+  .stage{
+    width:132px;background:var(--board-light);border-radius:16px;padding:14px 10px 12px;
+    border:1px solid rgba(217,138,61,0.15);text-align:center;
+  }
+  .stage svg{display:block;margin:0 auto;}
+  .stage-name{font-family:'Fraunces',serif;font-weight:600;font-size:12.5px;color:var(--cheese);margin-top:8px;}
+  .stage-pct{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:2px;}
+
+  /* ---- Live demo panel (matches phone mockup styling from screen-flow doc) ---- */
+  .demo-wrap{max-width:900px;margin:0 auto;}
+  .panel{
+    background:var(--board-light);border:1px solid rgba(217,138,61,0.18);
+    border-radius:20px;padding:28px 24px 24px;display:flex;gap:32px;flex-wrap:wrap;
+  }
+  .panel .info{flex:1;min-width:220px;}
+  .panel h2{font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin:0 0 8px;color:var(--cream);}
+  .panel .desc{font-size:13.5px;color:#C7B39B;line-height:1.6;margin:0 0 18px;}
+  .panel ul{margin:0;padding-left:18px;font-size:12.5px;color:#C7B39B;line-height:1.9;}
+  .panel ul b{color:var(--cheese);}
+
+  .stage-demo{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+  .plate-shadow{filter:drop-shadow(0 14px 18px rgba(0,0,0,0.45));}
+  .controls{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;}
+  button{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
+    background:var(--basil);color:var(--cream);border:none;
+    padding:9px 18px;border-radius:999px;cursor:pointer;
+    transition:transform .12s ease, background .12s ease;
+  }
+  button:hover{background:#5E9660;}
+  button:active{transform:scale(0.96);}
+  button.secondary{background:transparent;color:var(--basil);border:1px solid var(--basil);}
+  button.secondary:hover{background:rgba(75,122,76,0.14);}
+  .readout{
+    text-align:center;font-family:'Fraunces',serif;font-weight:600;
+    font-size:15px;color:var(--cheese);margin-top:14px;
+  }
+  .readout small{display:block;font-family:'Inter',sans-serif;font-weight:400;
+    font-size:11.5px;color:#B99A7C;margin-top:2px;letter-spacing:0.03em;text-transform:uppercase;}
+
+  /* ---- New Timer setup screen mockup w/ Plant chip selected ---- */
+  .phone-row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-top:26px;}
+  .phone{
+    width:236px;height:500px;background:var(--board-light);border-radius:34px;padding:10px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(217,138,61,0.15);
+  }
+  .screen{
+    width:100%;height:100%;border-radius:26px;overflow:hidden;position:relative;
+    display:flex;flex-direction:column;color:var(--ink);background:var(--plate);
+  }
+  .screen.dark{background:var(--board);color:var(--cream);}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 2px;font-size:10px;font-weight:600;}
+  .statusbar .icons{display:flex;gap:3px;align-items:center;}
+  .statusbar .icons div{width:9px;height:6px;background:currentColor;border-radius:1px;}
+  .screen-content{flex:1;padding:12px 16px 14px;display:flex;flex-direction:column;overflow:hidden;}
+  .app-header{font-family:'Fraunces',serif;font-weight:700;font-size:14px;margin:2px 0 3px;}
+  .app-sub{font-size:10px;color:var(--muted);margin-bottom:8px;}
+  .field{background:var(--cream);border:1px solid #E7D9C3;border-radius:10px;padding:9px 10px;font-size:10.5px;color:var(--muted);margin-bottom:9px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .chip{font-size:9.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--cream);border:1px solid #E7D9C3;color:var(--muted);}
+  .chip.active{background:var(--basil);border-color:var(--basil);color:var(--cream);}
+  .btn{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;padding:9px 14px;border-radius:999px;border:none;text-align:center;}
+  .btn-primary{background:var(--sauce);color:var(--cream);}
+  .btn-block{width:100%;display:block;}
+  .btn-secondary-dark{background:transparent;border:1px solid var(--basil);color:var(--cheese);}
+  .btn-ghost-dark{background:transparent;color:#B99A7C;font-weight:500;text-decoration:underline;font-size:10px;}
+  .step-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--basil);
+    letter-spacing:0.08em;margin-bottom:10px;text-align:center;
+  }
+
+  footer{max-width:900px;margin:56px auto 0;font-size:13px;color:#9B8067;line-height:1.7;
+    border-top:1px solid rgba(217,138,61,0.18);padding-top:26px;}
+  footer strong{color:var(--cheese);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">TimeSense — timer style, Concept C</div>
+  <h1>A seed grows,<br>blooms, and fades.</h1>
+  <p>A third visual timer style alongside the radial and sliced pizza: a plant that sprouts
+  at the start of the task, grows and flowers through the middle, then wilts as time runs
+  out — so "time's almost up" is felt as a flower closing, not just a color turning red.
+  Same warm palette as the rest of the app throughout, so it reads as one family of styles.</p>
+</header>
+
+<div class="section-label">Growth stages across the timer duration</div>
+<div class="stage-scroll">
+  <div class="stage-row" id="stageRow"></div>
+</div>
+
+<div class="section-label">Live demo — active timer with Plant style</div>
+<div class="demo-wrap">
+  <div class="panel">
+    <div class="info">
+      <h2>Plant Timer</h2>
+      <p class="desc">Same underlying elapsed/remaining math as the other two styles — this
+      is purely a different skin driven by the same <code>t = elapsed / total</code> value.</p>
+      <ul>
+        <li><b>0–50%</b> — stem grows, first leaves unfurl</li>
+        <li><b>45–55%</b> — a bud forms at the tip</li>
+        <li><b>55–85%</b> — flower opens, full bloom held</li>
+        <li><b>85–100%</b> — petals droop and brown, stem bows — task is almost out of time</li>
+      </ul>
+    </div>
+    <div class="stage-demo">
+      <svg id="livePlant" width="200" height="230" viewBox="0 0 200 230" class="plate-shadow"></svg>
+      <div class="readout" id="liveReadout">18:00 <small>remaining · 25:00 task</small></div>
+      <div class="controls">
+        <button id="plantToggle">Pause</button>
+        <button class="secondary" id="plantReset">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">Where it appears — New Timer setup + Active Timer</div>
+<div class="phone-row">
+
+  <div>
+    <div class="step-label">NEW TIMER SETUP</div>
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+      <div class="screen-content">
+        <div class="app-header">New timer</div>
+        <div class="field">What are you doing? (optional)</div>
+        <div class="app-sub" style="margin:2px 0 6px;">PREDICTED DURATION</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px;">
+          <div style="font-family:'Fraunces',serif;font-weight:700;font-size:24px;">25<span style="font-size:11px;font-weight:500;color:var(--muted);"> min</span></div>
+        </div>
+        <div class="app-sub" style="margin-bottom:6px;">TIMER STYLE</div>
+        <div class="chip-row">
+          <div class="chip">Radial</div><div class="chip">Slices</div><div class="chip active">Plant 🌱</div>
+        </div>
+        <div class="app-sub" style="margin-bottom:6px;">CATEGORY</div>
+        <div class="chip-row">
+          <div class="chip active">Chores</div><div class="chip">Work</div><div class="chip">Study</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div class="btn btn-primary btn-block">Start Timer</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div>
+    <div class="step-label">ACTIVE TIMER</div>
+    <div class="phone"><div class="screen dark">
+      <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+      <div class="screen-content" style="align-items:center;justify-content:center;">
+        <svg id="phonePlant" width="150" height="175" viewBox="0 0 200 230" style="margin-bottom:8px;"></svg>
+        <div style="font-family:'Fraunces',serif;font-weight:600;font-size:15px;margin-bottom:2px;">12:41</div>
+        <div style="font-size:9px;color:#B99A7C;margin-bottom:14px;">remaining · Deep work</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <div class="btn btn-secondary-dark">Pause</div>
+          <div class="btn btn-secondary-dark">+5 min</div>
+        </div>
+        <div class="btn-ghost-dark" style="margin-bottom:10px;">Got distracted</div>
+        <div class="btn btn-primary btn-block">Finish</div>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<footer>
+  <strong>Consistency check:</strong> every screen here reuses the same six tokens as the
+  rest of the spec — crust gold, sauce red, cheese cream, basil green, board dark, and plate
+  cream — so Plant, Radial, and Slices read as three skins of one design system, not three
+  different apps. Petal color intentionally stays in the crust/sauce family (not an
+  unrelated pink/purple) so a bloomed flower still feels visually related to a fresh pizza.
+</footer>
+
+<script>
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function lerp(a,b,t){ return a + (b-a)*t; }
+function lerpColor(a,b,t){
+  const ah=a.match(/\w\w/g).map(x=>parseInt(x,16));
+  const bh=b.match(/\w\w/g).map(x=>parseInt(x,16));
+  const c=ah.map((v,i)=>Math.round(v+(bh[i]-v)*t));
+  return `#${c.map(v=>v.toString(16).padStart(2,'0')).join('')}`;
+}
+function easeOut(t){ return 1 - Math.pow(1-t, 2); }
+function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+const COLORS = {
+  basil: '#4B7A4C',
+  basilDry: '#A98B4E',
+  crust: '#D98A3D',
+  sauce: '#C1442D',
+  wilt: '#8A6A4A',
+  board: '#241A14',
+  boardLight: '#332419',
+  cream: '#FFF8EC'
+};
+
+/* Draws the plant at progress t (0..1) into an existing <g> container, clearing first */
+function drawPlant(g, t){
+  while(g.firstChild) g.removeChild(g.firstChild);
+
+  const baseX = 100, baseY = 208;
+  const maxStem = 118;
+
+  // pot / soil
+  g.appendChild(el('ellipse',{cx:baseX,cy:baseY+10,rx:34,ry:9,fill:COLORS.boardLight}));
+  g.appendChild(el('path',{d:`M ${baseX-30} ${baseY} Q ${baseX} ${baseY+22} ${baseX+30} ${baseY} L ${baseX+26} ${baseY-14} Q ${baseX} ${baseY-6} ${baseX-26} ${baseY-14} Z`, fill: t < 0.06 ? COLORS.boardLight : COLORS.crust}));
+  g.appendChild(el('ellipse',{cx:baseX,cy:baseY-14,rx:26,ry:6,fill:'#4A2E17'}));
+
+  const growT = clamp01(t/0.5);
+  const stemH = easeOut(growT) * maxStem;
+  const wiltT = clamp01((t-0.85)/0.15); // 0 -> healthy, 1 -> fully wilted
+  const droopAngle = lerp(0, 34, wiltT);
+  const stemColor = lerpColor(COLORS.basil, COLORS.basilDry, wiltT);
+
+  if(t < 0.06){
+    // just a seed, nothing above soil yet
+    g.appendChild(el('circle',{cx:baseX,cy:baseY-16,r:3,fill:'#6B4A2E'}));
+    return;
+  }
+
+  const tipX = baseX + Math.sin(droopAngle*Math.PI/180) * stemH * 0.5;
+  const tipY = (baseY-14) - stemH + (1-Math.cos(droopAngle*Math.PI/180)) * stemH * 0.3;
+
+  // stem (curve toward droop as it wilts)
+  const stemPath = `M ${baseX} ${baseY-14} Q ${baseX + (tipX-baseX)*0.5} ${(baseY-14+tipY)/2} ${tipX} ${tipY}`;
+  g.appendChild(el('path',{d:stemPath, fill:'none', stroke:stemColor, ['stroke-width']:5, ['stroke-linecap']:'round'}));
+
+  // leaves — appear once stem passes their attach height
+  const leafPairs = [0.35, 0.65];
+  leafPairs.forEach((frac, i)=>{
+    const attachStemLen = stemH * frac;
+    if(attachStemLen < 6) return;
+    const along = attachStemLen / Math.max(stemH,1);
+    const ax = lerp(baseX, tipX, along);
+    const ay = lerp(baseY-14, tipY, along);
+    const leafScale = clamp01((growT - frac*0.5) / 0.15 + 0.2);
+    const side = i % 2 === 0 ? -1 : 1;
+    const leafColor = lerpColor(COLORS.basil, COLORS.basilDry, wiltT);
+    const g2 = el('g', {transform:`translate(${ax} ${ay}) rotate(${side*(40+droopAngle*0.6)}) scale(${0.3+0.7*leafScale})`});
+    g2.appendChild(el('path',{d:'M0 0 Q 16 -6 26 0 Q 16 6 0 0 Z', fill:leafColor}));
+    g.appendChild(g2);
+  });
+
+  // bud / flower — starts forming mid-way through growth
+  const bloomT = clamp01((t-0.45)/0.3); // 0 at 45%, 1 at 75%
+  if(bloomT > 0){
+    const petalColorHealthy = COLORS.crust;
+    const petalColor = lerpColor(petalColorHealthy, COLORS.wilt, wiltT);
+    const centerColor = lerpColor(COLORS.sauce, '#5C2E1C', wiltT);
+    const petalScale = 0.15 + 0.85*easeOut(bloomT);
+    const droopExtra = wiltT * 50;
+
+    const flowerG = el('g', {transform:`translate(${tipX} ${tipY}) rotate(${droopExtra})`});
+    const petalCount = 6;
+    for(let i=0;i<petalCount;i++){
+      const angle = (360/petalCount)*i;
+      const p = el('ellipse',{
+        cx:0, cy:-10*petalScale, rx:6*petalScale, ry:11*petalScale,
+        fill:petalColor,
+        transform:`rotate(${angle})`
+      });
+      flowerG.appendChild(p);
+    }
+    flowerG.appendChild(el('circle',{cx:0,cy:0,r:5*petalScale,fill:centerColor}));
+    g.appendChild(flowerG);
+  }
+}
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+/* ---- Static stage board ---- */
+const STAGES = [
+  {name:'Seed', pct:0},
+  {name:'Sprout', pct:0.12},
+  {name:'Growing', pct:0.32},
+  {name:'Budding', pct:0.5},
+  {name:'Bloom', pct:0.68},
+  {name:'Full bloom', pct:0.8},
+  {name:'Wilting', pct:1.0},
+];
+const stageRow = document.getElementById('stageRow');
+STAGES.forEach(s=>{
+  const wrap = document.createElement('div');
+  wrap.className = 'stage';
+  const svg = el('svg',{width:100,height:120,viewBox:'20 90 160 130'});
+  const g = el('g',{});
+  svg.appendChild(g);
+  drawPlant(g, s.pct);
+  wrap.appendChild(svg);
+  const name = document.createElement('div'); name.className='stage-name'; name.textContent=s.name;
+  const pct = document.createElement('div'); pct.className='stage-pct'; pct.textContent=Math.round(s.pct*100)+'% elapsed';
+  wrap.appendChild(name); wrap.appendChild(pct);
+  stageRow.appendChild(wrap);
+});
+
+/* ---- Live animated demo ---- */
+(function(){
+  const svg = document.getElementById('liveReadout') ? document.getElementById('livePlant') : null;
+  const phoneSvg = document.getElementById('phonePlant');
+  const g1 = el('g',{}); svg.appendChild(g1);
+  const g2 = el('g',{}); phoneSvg.appendChild(g2);
+
+  const TOTAL = 25*60;
+  let remaining = TOTAL;
+  let running = true;
+  const readout = document.getElementById('liveReadout');
+  const small = readout.querySelector('small');
+
+  function render(){
+    const t = 1 - clamp01(remaining/TOTAL);
+    drawPlant(g1, t);
+    drawPlant(g2, t);
+    readout.firstChild.textContent = fmtTime(remaining) + ' ';
+    small.textContent = `remaining · ${fmtTime(TOTAL)} task`;
+  }
+  render();
+
+  let last = performance.now();
+  function tick(now){
+    const dt = (now-last)/1000; last = now;
+    if(running){
+      remaining -= dt * 14; // sped up for demo
+      if(remaining <= 0){ remaining = TOTAL; }
+      render();
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  document.getElementById('plantToggle').addEventListener('click', (e)=>{
+    running = !running;
+    e.target.textContent = running ? 'Pause' : 'Resume';
+  });
+  document.getElementById('plantReset').addEventListener('click', ()=>{
+    remaining = TOTAL; render();
+  });
+})();
+</script>
+
+</body>
+</html>

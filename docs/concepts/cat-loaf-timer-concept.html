@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeSense — Grooming to a Loaf Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crust:#D98A3D;
+    --crust-dark:#B5691F;
+    --sauce:#C1442D;
+    --cheese:#FFE29B;
+    --basil:#4B7A4C;
+    --board:#241A14;
+    --board-light:#332419;
+    --plate:#FBF5E9;
+    --cream:#FFF8EC;
+    --ink:#241A14;
+    --muted:#8A7561;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--board);
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(217,138,61,0.07), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(193,68,45,0.08), transparent 45%);
+    color:var(--cream);
+    font-family:'Inter',sans-serif;
+    padding:44px 32px 90px;
+  }
+  header{max-width:900px;margin:0 auto 40px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--crust);font-weight:500;margin-bottom:10px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:900;font-size:clamp(28px,4.4vw,44px);
+    line-height:1.06;margin:0 0 14px;color:var(--cream);
+  }
+  header p{font-size:15px;line-height:1.6;color:#CBB79E;max-width:640px;margin:0;}
+  .refnote{
+    max-width:900px;margin:18px auto 0;background:var(--board-light);
+    border:1px solid rgba(217,138,61,0.2);border-radius:14px;padding:14px 18px;
+    font-size:13px;color:#C7B39B;line-height:1.6;
+  }
+  .refnote b{color:var(--cheese);}
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;
+    text-transform:uppercase;color:var(--crust);margin:44px auto 18px;max-width:900px;
+  }
+
+  .stage-scroll{overflow-x:auto;padding:6px 4px 20px;}
+  .stage-row{display:flex;gap:14px;min-width:max-content;}
+  .stage{
+    width:138px;background:var(--board-light);border-radius:16px;padding:10px 10px 12px;
+    border:1px solid rgba(217,138,61,0.15);text-align:center;
+  }
+  .stage svg{display:block;margin:0 auto;border-radius:10px;}
+  .stage-name{font-family:'Fraunces',serif;font-weight:600;font-size:12px;color:var(--cheese);margin-top:8px;}
+  .stage-pct{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:2px;}
+
+  .demo-wrap{max-width:900px;margin:0 auto;}
+  .panel{
+    background:var(--board-light);border:1px solid rgba(217,138,61,0.18);
+    border-radius:20px;padding:28px 24px 24px;display:flex;gap:32px;flex-wrap:wrap;
+  }
+  .panel .info{flex:1;min-width:220px;}
+  .panel h2{font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin:0 0 8px;color:var(--cream);}
+  .panel .desc{font-size:13.5px;color:#C7B39B;line-height:1.6;margin:0 0 18px;}
+  .panel ul{margin:0;padding-left:18px;font-size:12.5px;color:#C7B39B;line-height:1.9;}
+  .panel ul b{color:var(--cheese);}
+
+  .stage-demo{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+  .plate-shadow{filter:drop-shadow(0 14px 18px rgba(0,0,0,0.5));border-radius:12px;}
+  .controls{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;}
+  button{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
+    background:var(--crust);color:var(--board);border:none;
+    padding:9px 18px;border-radius:999px;cursor:pointer;
+    transition:transform .12s ease, background .12s ease;
+  }
+  button:hover{background:var(--cheese);}
+  button:active{transform:scale(0.96);}
+  button.secondary{background:transparent;color:var(--crust);border:1px solid var(--crust);}
+  button.secondary:hover{background:rgba(217,138,61,0.14);}
+  .readout{
+    text-align:center;font-family:'Fraunces',serif;font-weight:600;
+    font-size:15px;color:var(--cheese);margin-top:14px;
+  }
+  .readout small{display:block;font-family:'Inter',sans-serif;font-weight:400;
+    font-size:11.5px;color:#B99A7C;margin-top:2px;letter-spacing:0.03em;text-transform:uppercase;}
+  .phase-tag{
+    text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;
+    color:var(--crust);margin-top:4px;letter-spacing:0.05em;text-transform:uppercase;
+  }
+
+  .phone-row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-top:26px;}
+  .phone{
+    width:236px;height:500px;background:var(--board-light);border-radius:34px;padding:10px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(217,138,61,0.15);
+  }
+  .screen{
+    width:100%;height:100%;border-radius:26px;overflow:hidden;position:relative;
+    display:flex;flex-direction:column;color:var(--ink);background:var(--plate);
+  }
+  .screen.dark{background:var(--board);color:var(--cream);}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 2px;font-size:10px;font-weight:600;position:relative;z-index:2;}
+  .statusbar .icons{display:flex;gap:3px;align-items:center;}
+  .statusbar .icons div{width:9px;height:6px;background:currentColor;border-radius:1px;}
+  .screen-content{flex:1;padding:12px 16px 14px;display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:2;}
+  .app-header{font-family:'Fraunces',serif;font-weight:700;font-size:14px;margin:2px 0 3px;}
+  .app-sub{font-size:10px;color:var(--muted);margin-bottom:8px;}
+  .field{background:var(--cream);border:1px solid #E7D9C3;border-radius:10px;padding:9px 10px;font-size:10.5px;color:var(--muted);margin-bottom:9px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .chip{font-size:9.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--cream);border:1px solid #E7D9C3;color:var(--muted);}
+  .chip.active{background:var(--crust);border-color:var(--crust);color:var(--board);}
+  .btn{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;padding:9px 14px;border-radius:999px;border:none;text-align:center;}
+  .btn-primary{background:var(--sauce);color:var(--cream);}
+  .btn-block{width:100%;display:block;}
+  .btn-secondary-dark{background:transparent;border:1px solid var(--crust);color:var(--cheese);}
+  .btn-ghost-dark{background:transparent;color:#B99A7C;font-weight:500;text-decoration:underline;font-size:10px;}
+  .step-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--crust);
+    letter-spacing:0.08em;margin-bottom:10px;text-align:center;
+  }
+
+  footer{max-width:900px;margin:56px auto 0;font-size:13px;color:#9B8067;line-height:1.7;
+    border-top:1px solid rgba(217,138,61,0.18);padding-top:26px;}
+  footer strong{color:var(--cheese);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">TimeSense — timer style, Concept H (revised)</div>
+  <h1>Walks in. Grooms.<br>Tucks itself away.</h1>
+  <p>Revised from the first pass: the cat now actually <b>walks into frame</b> with a real
+  four-legged gait instead of sliding in, and grooming is broken into distinct, smooth steps —
+  paw, face, tail, flank — each with its own small repeating motion, rather than one static
+  "groom" pose. Proportions are pulled in to read as a cat rather than a cartoon mascot:
+  a proper wedge-shaped head, tapered legs, and a continuous body silhouette instead of
+  stacked circles.</p>
+</header>
+
+<div class="refnote">
+  <b>On the reference photo:</b> still used only as a style reference for an original
+  illustrated character, not reproduced directly. Colors are unchanged from the first pass —
+  amber fur (<code>--crust</code>), tabby stripes (<code>--crust-dark</code>), cream
+  muzzle/chest (<code>--cream</code>), pink nose (<code>--sauce</code>), and green eyes mapped
+  to <code>--basil</code> — still zero new hues introduced.
+</div>
+
+<div class="section-label">The seven-step routine, across the timer duration</div>
+<div class="stage-scroll">
+  <div class="stage-row" id="stageRow"></div>
+</div>
+
+<div class="section-label">Live demo — active timer with Cat Loaf style</div>
+<div class="demo-wrap">
+  <div class="panel">
+    <div class="info">
+      <h2>Grooming to a Loaf</h2>
+      <p class="desc">Same <code>t = elapsed / total</code> value as every other style. Within
+      each grooming phase, a small looping motion (driven by a separate animation clock, not
+      by elapsed time) gives the licking/wiping its own rhythm — so it reads as continuous
+      grooming, not a slideshow of poses.</p>
+      <ul>
+        <li><b>0–10%</b> — walks in with a real walking gait, tail swaying</li>
+        <li><b>10–16%</b> — arrives, one arched stretch — still a little disheveled</li>
+        <li><b>16–50%</b> — grooms a front paw, then wipes it over the face and ear</li>
+        <li><b>50–80%</b> — grooms the tail, then the flank</li>
+        <li><b>80–100%</b> — rounds up, tail wraps around, tucks into a full loaf</li>
+      </ul>
+    </div>
+    <div class="stage-demo">
+      <svg id="liveCat" width="220" height="150" viewBox="0 0 220 150" class="plate-shadow"></svg>
+      <div class="phase-tag" id="livePhaseTag">Walking in</div>
+      <div class="readout" id="liveReadout">18:00 <small>remaining · 25:00 task</small></div>
+      <div class="controls">
+        <button id="catToggle">Pause</button>
+        <button class="secondary" id="catReset">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">Where it appears — New Timer setup + Active Timer</div>
+<div class="phone-row">
+
+  <div>
+    <div class="step-label">NEW TIMER SETUP</div>
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+      <div class="screen-content">
+        <div class="app-header">New timer</div>
+        <div class="field">What are you doing? (optional)</div>
+        <div class="app-sub" style="margin:2px 0 6px;">PREDICTED DURATION</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px;">
+          <div style="font-family:'Fraunces',serif;font-weight:700;font-size:24px;">25<span style="font-size:11px;font-weight:500;color:var(--muted);"> min</span></div>
+        </div>
+        <div class="app-sub" style="margin-bottom:6px;">TIMER STYLE</div>
+        <div class="chip-row">
+          <div class="chip">Radial</div><div class="chip">Plant</div><div class="chip">Moon</div><div class="chip">Monk</div><div class="chip active">Cat Loaf 🐱</div>
+        </div>
+        <div class="app-sub" style="margin-bottom:6px;">CATEGORY</div>
+        <div class="chip-row">
+          <div class="chip active">Rest</div><div class="chip">Chores</div><div class="chip">Work</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div class="btn btn-primary btn-block">Start Timer</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div>
+    <div class="step-label">ACTIVE TIMER</div>
+    <div class="phone"><div class="screen dark">
+      <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+      <div class="screen-content" style="align-items:center;justify-content:center;">
+        <svg id="phoneCat" width="196" height="134" viewBox="0 0 220 150" style="margin-bottom:10px;border-radius:12px;"></svg>
+        <div style="font-family:'Fraunces',serif;font-weight:600;font-size:15px;margin-bottom:2px;">12:41</div>
+        <div style="font-size:9px;color:#B99A7C;margin-bottom:14px;">remaining · Wind down</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <div class="btn btn-secondary-dark">Pause</div>
+          <div class="btn btn-secondary-dark">+5 min</div>
+        </div>
+        <div class="btn-ghost-dark" style="margin-bottom:10px;">Got distracted</div>
+        <div class="btn btn-primary btn-block">Finish</div>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<footer>
+  <strong>A production note:</strong> phases still crossfade rather than fully skeletal-morph
+  into one another (true morphing between a walking gait and a curled loaf is a much bigger
+  animation investment). What changed from the first pass is that every phase now shares the
+  same body/head/leg/tail construction, just re-parametrized — so the cat looks like one
+  consistent character moving through a routine, not four unrelated drawings dissolving into
+  each other. The licking/wiping loops run on their own clock independent of the timer speed,
+  so they stay smooth and readable however fast or slow the underlying countdown runs.
+</footer>
+
+<script>
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function lerp(a,b,t){ return a + (b-a)*t; }
+function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+const COLORS = {
+  board:'#241A14', boardLight:'#332419', cream:'#FFF8EC', plate:'#FBF5E9',
+  crust:'#D98A3D', crustDark:'#B5691F', sauce:'#C1442D', cheese:'#FFE29B', basil:'#4B7A4C'
+};
+
+const GX = 112, GY = 124; // ground/seat reference point
+
+function trapezoid(t,a,b,c,d){
+  if(t<=a || t>=d) return 0;
+  if(t<b) return (t-a)/(b-a);
+  if(t<=c) return 1;
+  return 1-(t-c)/(d-c);
+}
+
+function drawMat(g){
+  g.appendChild(el('ellipse',{cx:GX, cy:GY+8, rx:56, ry:11, fill:COLORS.boardLight}));
+  g.appendChild(el('ellipse',{cx:GX, cy:GY+5, rx:48, ry:8, fill:COLORS.crustDark, opacity:0.55}));
+}
+
+/* Continuous torso silhouette. cx,cy = center of torso. o = shape params. */
+function bodyPath(cx, cy, o){
+  const frontX = cx - o.len/2, rearX = cx + o.len/2;
+  const shoulderY = cy + o.frontY;
+  const hipY = cy + o.rearY;
+  const backY = cy + o.backY;
+  const bellyY = cy + o.bellyY;
+  return `M ${frontX} ${shoulderY}
+    C ${frontX-3} ${backY+8}, ${cx-o.len*0.18} ${backY}, ${cx} ${backY}
+    C ${cx+o.len*0.18} ${backY}, ${rearX+5} ${backY+10}, ${rearX} ${hipY}
+    C ${rearX+2} ${hipY+10}, ${rearX-8} ${bellyY+4}, ${cx+4} ${bellyY}
+    C ${cx-4} ${bellyY}, ${frontX+6} ${shoulderY+8}, ${frontX} ${shoulderY} Z`;
+}
+
+function drawTorso(g, cx, cy, o){
+  g.appendChild(el('path',{d:bodyPath(cx,cy,o), fill:COLORS.crust}));
+  // subtle stripes across the back
+  const backY = cy + o.backY;
+  [-0.28,-0.05,0.2].forEach(f=>{
+    const sx = cx + f*o.len;
+    g.appendChild(el('path',{d:`M ${sx-6} ${backY+6} Q ${sx} ${backY+2} ${sx+6} ${backY+6}`, fill:'none', stroke:COLORS.crustDark, ['stroke-width']:1.5, opacity:0.4}));
+  });
+  // belly/chest patch
+  g.appendChild(el('ellipse',{cx:cx-o.len*0.08, cy:cy+o.bellyY-4, rx:o.len*0.22, ry:6, fill:COLORS.cream, opacity:0.55}));
+}
+
+function drawHead(g, hx, hy, rot, state){
+  const hg = el('g',{transform:`translate(${hx} ${hy}) rotate(${rot})`});
+  // ears (behind head shape)
+  hg.appendChild(el('path',{d:'M -7.5 -9 L -10.5 -18 L -3 -12 Z', fill:COLORS.crust}));
+  hg.appendChild(el('path',{d:'M -7 -9.5 L -8.7 -15 L -4.3 -11.5 Z', fill:COLORS.crustDark, opacity:0.45}));
+  hg.appendChild(el('path',{d:'M 7.5 -9 L 10.5 -18 L 3 -12 Z', fill:COLORS.crust}));
+  hg.appendChild(el('path',{d:'M 7 -9.5 L 8.7 -15 L 4.3 -11.5 Z', fill:COLORS.crustDark, opacity:0.45}));
+  // head wedge
+  hg.appendChild(el('path',{d:'M -8.5 -5 C -10 -11 -5.5 -15 0 -15 C 5.5 -15 10 -11 8.5 -5 C 8.2 0.5 5.5 5.5 1.8 7.2 C 3.2 9 2.2 11.5 0 11.5 C -2.2 11.5 -3.2 9 -1.8 7.2 C -5.5 5.5 -8.2 0.5 -8.5 -5 Z', fill:COLORS.crust}));
+  // muzzle fluff
+  hg.appendChild(el('ellipse',{cx:0,cy:5,rx:5.6,ry:4,fill:COLORS.cream,opacity:0.9}));
+  // nose
+  hg.appendChild(el('path',{d:'M -1.5 1.6 L 1.5 1.6 L 0 3.8 Z', fill:COLORS.sauce}));
+  // mouth
+  const mo = state.mouthOpen||0;
+  hg.appendChild(el('path',{d:`M 0 3.8 Q ${-1-mo*1.4} ${5.4+mo*2} ${-1.8-mo*0.8} ${6+mo*2.4}`, fill:'none', stroke:COLORS.crustDark, ['stroke-width']:0.7, ['stroke-linecap']:'round'}));
+  hg.appendChild(el('path',{d:`M 0 3.8 Q ${1+mo*1.4} ${5.4+mo*2} ${1.8+mo*0.8} ${6+mo*2.4}`, fill:'none', stroke:COLORS.crustDark, ['stroke-width']:0.7, ['stroke-linecap']:'round'}));
+  // eyes
+  if(state.eyeState==='open'){
+    hg.appendChild(el('ellipse',{cx:-3.4,cy:-1.4,rx:1.2,ry:1.5,fill:COLORS.basil}));
+    hg.appendChild(el('ellipse',{cx:3.4,cy:-1.4,rx:1.2,ry:1.5,fill:COLORS.basil}));
+    hg.appendChild(el('circle',{cx:-3.4,cy:-1.4,r:0.45,fill:COLORS.board}));
+    hg.appendChild(el('circle',{cx:3.4,cy:-1.4,r:0.45,fill:COLORS.board}));
+  } else if(state.eyeState==='half'){
+    hg.appendChild(el('path',{d:'M -4.8 -1.4 Q -3.4 -0.4 -2 -1.4', fill:'none', stroke:COLORS.basil, ['stroke-width']:1.1, ['stroke-linecap']:'round'}));
+    hg.appendChild(el('path',{d:'M 2 -1.4 Q 3.4 -0.4 4.8 -1.4', fill:'none', stroke:COLORS.basil, ['stroke-width']:1.1, ['stroke-linecap']:'round'}));
+  } else {
+    hg.appendChild(el('line',{x1:-4.8,y1:-1.4,x2:-2,y2:-1.4, stroke:COLORS.board, ['stroke-width']:0.9, ['stroke-linecap']:'round'}));
+    hg.appendChild(el('line',{x1:2,y1:-1.4,x2:4.8,y2:-1.4, stroke:COLORS.board, ['stroke-width']:0.9, ['stroke-linecap']:'round'}));
+  }
+  // whiskers
+  [-1,1].forEach(side=>{
+    for(let i=0;i<3;i++){
+      hg.appendChild(el('line',{x1:side*3.2, y1:3.6+i*1.1, x2:side*10.5, y2:1.8+i*1.9, stroke:COLORS.crustDark, ['stroke-width']:0.4, opacity:0.5}));
+    }
+  });
+  g.appendChild(hg);
+  return hg;
+}
+
+function drawLeg(g, x, y, phase, len, groomed){
+  // phase: -1 (back) .. 1 (forward)
+  const kneeX = x + phase*3.2;
+  const kneeY = y + len*0.55;
+  const pawX = x + phase*6.5;
+  const pawY = y + len;
+  g.appendChild(el('path',{d:`M ${x} ${y} Q ${kneeX} ${kneeY} ${pawX} ${pawY}`, fill:'none', stroke:COLORS.crustDark, ['stroke-width']:2.6, ['stroke-linecap']:'round'}));
+  g.appendChild(el('ellipse',{cx:pawX,cy:pawY+1,rx:2.6,ry:1.5,fill: groomed ? COLORS.cream : COLORS.crust}));
+}
+
+function drawTail(g, bx, by, path, thickness){
+  g.appendChild(el('path',{d:path, fill:'none', stroke:COLORS.crust, ['stroke-width']:thickness||4, ['stroke-linecap']:'round'}));
+  g.appendChild(el('path',{d:path, fill:'none', stroke:COLORS.crustDark, ['stroke-width']:(thickness||4)*0.28, ['stroke-linecap']:'round', opacity:0.35}));
+}
+
+/* ===================== POSES ===================== */
+
+function poseWalk(alpha, t, clock){
+  const g = el('g',{opacity:alpha});
+  if(alpha<=0.01) return g;
+  const x = lerp(238, GX-6, clamp01(t/0.10));
+  const y = GY - 9;
+  const stride = Math.sin(clock*7);
+  drawLeg(g, x-8, y+3, stride, 11, false);
+  drawLeg(g, x+8, y+3, -stride, 11, false);
+  drawTorso(g, x, y, {len:30, frontY:2, rearY:2, backY:-9+Math.abs(stride)*0.6, bellyY:9});
+  drawTail(g, x+15, y-1, `M ${x+15} ${y-1} Q ${x+27+stride*2} ${y-12} ${x+21+stride*3} ${y-24}`, 3.6);
+  const bob = Math.abs(stride)*0.8;
+  drawHead(g, x-16, y-8-bob, -4, {eyeState:'open', mouthOpen:0});
+  return g;
+}
+
+function poseStretch(alpha, clock){
+  const g = el('g',{opacity:alpha});
+  if(alpha<=0.01) return g;
+  const x = GX-6, y = GY-6;
+  drawLeg(g, x-16, y+2, 1, 13, false);
+  drawLeg(g, x-8, y+2, 1, 13, false);
+  drawTorso(g, x, y, {len:36, frontY:6, rearY:-2, backY:-20, bellyY:8});
+  drawLeg(g, x+16, y-4, -0.6, 9, false);
+  drawLeg(g, x+22, y-4, -0.6, 9, false);
+  drawTail(g, x+18, y-8, `M ${x+18} ${y-8} Q ${x+30} ${y-20} ${x+22} ${y-28}`, 4);
+  const yawn = 0.55 + Math.sin(clock*2)*0.25;
+  drawHead(g, x-24, y+6, 16, {eyeState:'half', mouthOpen:Math.max(0,yawn)});
+  return g;
+}
+
+function poseGroomPaw(alpha, clock){
+  const g = el('g',{opacity:alpha});
+  if(alpha<=0.01) return g;
+  const x = GX, y = GY-2;
+  const lick = (Math.sin(clock*5)+1)/2; // 0..1 loop
+  drawLeg(g, x-2, y+8, 0.1, 8, false); // planted paw
+  drawTorso(g, x, y, {len:32, frontY:6, rearY:6, backY:-10, bellyY:8});
+  drawTail(g, x+16, y+8, `M ${x+16} ${y+8} Q ${x+28} ${y+2} ${x+22} ${y-8}`, 3.8);
+  // raised, licking paw
+  const pawY = lerp(y-2, y-11, lick);
+  const pawX = lerp(x-9, x-6, lick);
+  g.appendChild(el('path',{d:`M ${x-8} ${y+8} Q ${x-11} ${y-2} ${pawX} ${pawY}`, fill:'none', stroke:COLORS.crustDark, ['stroke-width']:3, ['stroke-linecap']:'round'}));
+  g.appendChild(el('ellipse',{cx:pawX,cy:pawY,rx:2.6,ry:1.7,fill:lick>0.6?COLORS.cream:COLORS.crust}));
+  drawHead(g, x-8, y-14, lerp(0,-14,lick), {eyeState:'closed', mouthOpen:0.2});
+  if(lick>0.55){
+    g.appendChild(el('ellipse',{cx:pawX+1,cy:pawY+1.6,rx:1,ry:0.7,fill:COLORS.sauce,opacity:0.8}));
+  }
+  return g;
+}
+
+function poseWipeFace(alpha, clock){
+  const g = el('g',{opacity:alpha});
+  if(alpha<=0.01) return g;
+  const x = GX, y = GY-2;
+  const wipe = (Math.sin(clock*4.2)+1)/2;
+  drawLeg(g, x-2, y+8, 0.1, 8, true);
+  drawTorso(g, x, y, {len:32, frontY:6, rearY:6, backY:-10, bellyY:8});
+  drawTail(g, x+16, y+8, `M ${x+16} ${y+8} Q ${x+28} ${y+2} ${x+22} ${y-8}`, 3.8);
+  const sweepAngle = lerp(-10, 40, wipe);
+  const px = x-8 + Math.cos(sweepAngle*Math.PI/180)*10;
+  const py = y-12 - Math.sin(sweepAngle*Math.PI/180)*7;
+  g.appendChild(el('path',{d:`M ${x-8} ${y+8} Q ${x-13} ${y-4} ${px} ${py}`, fill:'none', stroke:COLORS.crustDark, ['stroke-width']:3, ['stroke-linecap']:'round'}));
+  g.appendChild(el('ellipse',{cx:px,cy:py,rx:2.6,ry:1.7,fill:COLORS.cream}));
+  drawHead(g, x-8, y-14, -6, {eyeState:'closed', mouthOpen:0});
+  return g;
+}
+
+function poseGroomTail(alpha, clock){
+  const g = el('g',{opacity:alpha});
+  if(alpha<=0.01) return g;
+  const x = GX, y = GY-2;
+  const nod = (Math.sin(clock*4.5)+1)/2;
+  drawLeg(g, x-8, y+8, 0.1, 8, true);
+  drawLeg(g, x+2, y+8, 0.1, 8, true);
+  drawTorso(g, x, y, {len:32, frontY:6, rearY:6, backY:-10, bellyY:8});
+  const tailPath = `M ${x+14} ${y+6} Q ${x+2} ${y+16} ${x-10} ${y+9}`;
+  drawTail(g, x+14, y+6, tailPath, 4.2);
+  const headX = lerp(x-6, x-11, nod), headY = lerp(y-14, y+2, nod);
+  drawHead(g, headX, headY, lerp(-8, -34, nod), {eyeState:'closed', mouthOpen:0.15});
+  return g;
+}
+
+function poseGroomFlank(alpha, clock){
+  const g = el('g',{opacity:alpha});
+  if(alpha<=0.01) return g;
+  const x = GX, y = GY-2;
+  const twist = (Math.sin(clock*4)+1)/2;
+  drawLeg(g, x-8, y+8, 0.1, 8, true);
+  drawLeg(g, x+2, y+8, 0.1, 8, true);
+  drawTorso(g, x, y, {len:32, frontY:6, rearY:6, backY:-10, bellyY:8});
+  drawTail(g, x+16, y+8, `M ${x+16} ${y+8} Q ${x+28} ${y+2} ${x+22} ${y-8}`, 3.8);
+  const headX = lerp(x+4, x+12, twist), headY = lerp(y-8, y+2, twist);
+  drawHead(g, headX, headY, lerp(10, 46, twist), {eyeState:'closed', mouthOpen:0.15});
+  return g;
+}
+
+function poseLoaf(alpha, t){
+  const g = el('g',{opacity:alpha});
+  if(alpha<=0.01) return g;
+  const x = GX, y = GY;
+  const settle = clamp01((t-0.8)/0.2);
+  drawTorso(g, x, y, {len:lerp(32,44,settle), frontY:6, rearY:6, backY:lerp(-10,-22,settle), bellyY:lerp(8,4,settle)});
+  drawTail(g, x+18, y+6, `M ${x+18} ${y+6} Q ${x+2} ${y+16} ${x-16} ${y+8}`, 4.4);
+  const eyeState = settle>0.7 ? 'half' : 'closed';
+  drawHead(g, x-10, y-18-settle*4, -8, {eyeState, mouthOpen:0});
+  return g;
+}
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+const PHASES = [
+  {name:'Walking in',      a:0.00, b:0.02, c:0.08, d:0.11, fn:poseWalk},
+  {name:'Arrival stretch', a:0.09, b:0.12, c:0.15, d:0.18, fn:poseStretch},
+  {name:'Grooming a paw',  a:0.16, b:0.20, c:0.32, d:0.36, fn:poseGroomPaw},
+  {name:'Wiping the face', a:0.34, b:0.38, c:0.48, d:0.52, fn:poseWipeFace},
+  {name:'Grooming the tail',a:0.50,b:0.54, c:0.65, d:0.69, fn:poseGroomTail},
+  {name:'Grooming the flank',a:0.67,b:0.71, c:0.80, d:0.84, fn:poseGroomFlank},
+  {name:'Tucked into a loaf',a:0.82,b:0.87, c:1.0, d:1.0, fn:poseLoaf},
+];
+
+function currentPhaseName(t){
+  for(const p of PHASES){ if(t>=p.a && t<p.d) return p.name; }
+  return PHASES[PHASES.length-1].name;
+}
+
+function drawScene(g, t, clock){
+  clock = clock || 0;
+  while(g.firstChild) g.removeChild(g.firstChild);
+  g.appendChild(el('rect',{x:0,y:0,width:220,height:150,fill:COLORS.board}));
+  g.appendChild(el('circle',{cx:172,cy:24,r:20,fill:COLORS.cheese,opacity:0.12}));
+  drawMat(g);
+  PHASES.forEach(p=>{
+    const wt = trapezoid(t, p.a, p.b, p.c, p.d);
+    if(wt>0.01){
+      const drawn = p.fn===poseWalk || p.fn===poseLoaf ? p.fn(wt, t, clock) : p.fn(wt, clock);
+      g.appendChild(drawn);
+    }
+  });
+}
+
+/* ---- Static stage board (clock=0.6 so grooming poses show mid-motion, not a flat 0 frame) ---- */
+const STAGE_SNAPSHOTS = [
+  {name:'Walking in', pct:0.05},
+  {name:'Arrival stretch', pct:0.13},
+  {name:'Grooming a paw', pct:0.26},
+  {name:'Wiping the face', pct:0.43},
+  {name:'Grooming the tail', pct:0.58},
+  {name:'Grooming the flank', pct:0.75},
+  {name:'Tucked into a loaf', pct:1.0},
+];
+const stageRow = document.getElementById('stageRow');
+STAGE_SNAPSHOTS.forEach(s=>{
+  const wrap = document.createElement('div');
+  wrap.className = 'stage';
+  const svg = el('svg',{width:118,height:80,viewBox:'0 0 220 150'});
+  const g = el('g',{});
+  svg.appendChild(g);
+  drawScene(g, s.pct, 0.6);
+  wrap.appendChild(svg);
+  const name = document.createElement('div'); name.className='stage-name'; name.textContent=s.name;
+  const pct = document.createElement('div'); pct.className='stage-pct'; pct.textContent=Math.round(s.pct*100)+'% elapsed';
+  wrap.appendChild(name); wrap.appendChild(pct);
+  stageRow.appendChild(wrap);
+});
+
+/* ---- Live animated demo ---- */
+(function(){
+  const svg = document.getElementById('liveCat');
+  const phoneSvg = document.getElementById('phoneCat');
+  const g1 = el('g',{}); svg.appendChild(g1);
+  const g2 = el('g',{}); phoneSvg.appendChild(g2);
+
+  const TOTAL = 25*60;
+  let remaining = TOTAL;
+  let running = true;
+  const readout = document.getElementById('liveReadout');
+  const small = readout.querySelector('small');
+  const phaseTag = document.getElementById('livePhaseTag');
+  let clock = 0;
+
+  function render(){
+    const t = 1 - clamp01(remaining/TOTAL);
+    drawScene(g1, t, clock);
+    drawScene(g2, t, clock);
+    phaseTag.textContent = currentPhaseName(t);
+    readout.firstChild.textContent = fmtTime(remaining) + ' ';
+    small.textContent = `remaining · ${fmtTime(TOTAL)} task`;
+  }
+  render();
+
+  let last = performance.now();
+  function tick(now){
+    const dt = (now-last)/1000; last = now;
+    if(running){
+      remaining -= dt * 14;
+      clock += dt;
+      if(remaining <= 0){ remaining = TOTAL; }
+      render();
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  document.getElementById('catToggle').addEventListener('click', (e)=>{
+    running = !running;
+    e.target.textContent = running ? 'Pause' : 'Resume';
+  });
+  document.getElementById('catReset').addEventListener('click', ()=>{
+    remaining = TOTAL; clock = 0; render();
+  });
+})();
+</script>
+
+</body>
+</html>
