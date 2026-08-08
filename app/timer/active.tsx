@@ -14,6 +14,7 @@ import { VisualTimer } from '@/components/timer/VisualTimer';
 import { TsButton } from '@/components/ui/TsButton';
 import { colors, fonts } from '@/constants/theme';
 import { createTask } from '@/lib/tasksDb';
+import { pulseMilestoneFeedback } from '@/lib/timerFeedback';
 import { formatClock } from '@/lib/timerMath';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -23,12 +24,14 @@ export default function ActiveTimerScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const snapshot = useActiveTimerStore((s) => s.snapshot);
   const meta = useActiveTimerStore((s) => s.meta);
+  const milestoneFlags = useActiveTimerStore((s) => s.milestoneFlags);
   const tick = useActiveTimerStore((s) => s.tick);
   const pause = useActiveTimerStore((s) => s.pause);
   const resume = useActiveTimerStore((s) => s.resume);
   const addFiveMinutes = useActiveTimerStore((s) => s.addFiveMinutes);
   const toggleDigital = useActiveTimerStore((s) => s.toggleDigital);
   const pulse = useActiveTimerStore((s) => s.pulse);
+  const setMilestoneFlags = useActiveTimerStore((s) => s.setMilestoneFlags);
   const getDerived = useActiveTimerStore((s) => s.getDerived);
   const start = useActiveTimerStore((s) => s.start);
   const user = useAuthStore((s) => s.user);
@@ -74,6 +77,24 @@ export default function ActiveTimerScreen() {
     });
     return () => sub.remove();
   }, [pulse]);
+
+  useEffect(() => {
+    if (!snapshot || snapshot.pauseStartedAtMs != null) return;
+    let cancelled = false;
+    void pulseMilestoneFeedback(snapshot, milestoneFlags).then((next) => {
+      if (cancelled) return;
+      if (
+        next.halfway !== milestoneFlags.halfway ||
+        next.oneMinute !== milestoneFlags.oneMinute ||
+        next.complete !== milestoneFlags.complete
+      ) {
+        setMilestoneFlags(next);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshot, milestoneFlags, tick, setMilestoneFlags]);
 
   const derived = getDerived(Date.now());
   void tick;

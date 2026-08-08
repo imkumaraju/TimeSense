@@ -66,7 +66,7 @@ const config = {
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#D98A3D',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -98,16 +98,17 @@ const config = {
       {
         image: './assets/images/splash-icon.png',
         resizeMode: 'contain',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#FFF8EC',
       },
     ],
     'expo-sqlite',
     'expo-apple-authentication',
+    '@react-native-community/datetimepicker',
     [
       'expo-notifications',
       {
         icon: './assets/images/icon.png',
-        color: '#2A9D8F',
+        color: '#D98A3D',
       },
     ],
   ],

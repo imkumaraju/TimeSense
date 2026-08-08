@@ -15,7 +15,7 @@ Use this as the ordered to-do list. Checkboxes are for you (accounts, portals, s
 | Bundle / package IDs (env-specific) | **Done** — `com.timesense.dev` / `.sys` / `com.timesense` via `APP_ENV` |
 | URL schemes (env-specific) + path `/auth/callback` | **Done** — `timesense-dev` / `timesense-sys` / `timesense` (`app.config.js`, `lib/oauth.ts`) |
 | `eas.json` profiles: `development`, `preview`, `production` | **Done** — `APP_ENV` per profile; preview APK; production store + AAB |
-| Migrations `001`–`004` in repo | Done — apply per env via SQL Editor (see promotion guide) |
+| Migrations `001`–`006` in repo | Done — apply per env via SQL Editor (see promotion guide) |
 | Local `.env` + `.env.example` (`EXPO_PUBLIC_SUPABASE_URL` + `KEY`/`ANON_KEY`) | Done |
 | Social auth setup docs (`supabase/SETUP.txt`, `SOCIAL_AUTH_SETUP.txt`) | Done — update per env when creating sys/prod |
 | GitHub remote `imkumaraju/TimeSense` | Done |
@@ -151,6 +151,8 @@ Do this on **each** project after it exists. Existing project `pwgspnqodaokmkoyg
   - `supabase/migrations/002_task_description.sql`  
   - `supabase/migrations/003_cost_strategy_schema.sql`  
   - `supabase/migrations/004_profile_names.sql`  
+  - `supabase/migrations/005_delete_own_account.sql`  
+  - `supabase/migrations/006_soft_delete_account.sql` *(required — soft-delete + fresh start; replaces hard delete)*  
 - [ ] Later changes: `supabase migration new …` → commit → `supabase db push` to the env matching the branch
 
 #### 2. Auth → URL Configuration
@@ -230,7 +232,7 @@ Copy **Project URL** + **anon key** into `.env.*` / EAS env for that profile onl
 Do this so Google/Supabase stay consistent and nothing breaks mid-cutover:
 
 1. [ ] Resolve remaining Decisions (3rd Supabase slot, keep existing project as **dev**).  
-2. [ ] Create **sys** + **prod** Supabase projects; run migrations `001`–`004` on each.  
+2. [ ] Create **sys** + **prod** Supabase projects; run migrations `001`–`006` on each.  
 3. [ ] Google Cloud: create three **Web** OAuth clients; add each project’s `…/auth/v1/callback` redirect URI.  
 4. [ ] Supabase per project: URL Configuration (Site URL + redirects) → Google provider (that env’s Web client) → Apple Client IDs (new bundle IDs).  
 5. [ ] Verify Google sign-in against **dev** (Expo Go still uses `exp://…`).  
@@ -290,13 +292,13 @@ See [OAuth console checklist](#oauth-console-checklist-you--do-before-multi-env-
 | Project | Ref | Status |
 |---------|-----|--------|
 | timesense (dev) | `pwgspnqodaokmkoyghcu` | Live — treat as **dev** |
-| timesense-sys | `uihapuiivlrpfxftyivo` | Live — confirm migrations `001`–`004` applied |
+| timesense-sys | `uihapuiivlrpfxftyivo` | Live — confirm migrations `001`–`006` applied |
 | timesense-prod | TBD | Blocked until 3rd project slot |
 
 For **sys** (and later **prod**):
 
 1. [ ] Settings → API: copy **Project URL** + **anon/publishable key**  
-2. [ ] Run migrations `001`–`004` in SQL Editor if not already applied (never hand-edit schema)  
+2. [ ] Run migrations `001`–`006` in SQL Editor if not already applied (never hand-edit schema)  
 3. [ ] Auth providers + URL Configuration (per OAuth checklist)  
 
 **CLI (recommended):**
@@ -471,7 +473,7 @@ Needs: `EXPO_TOKEN`, Supabase access tokens / DB passwords as GitHub secrets.
 ## Suggested order this week
 
 1. **Phase 1:** confirm `dev` / `sys` on GitHub; protect `main` + `sys`; read [GITHUB_PROMOTION.md](./GITHUB_PROMOTION.md).  
-2. Confirm **sys** Supabase has migrations `001`–`004`; finish OAuth for sys (Google redirect for `uihapuiivlrpfxftyivo`).  
+2. Confirm **sys** Supabase has migrations `001`–`006`; finish OAuth for sys (Google redirect for `uihapuiivlrpfxftyivo`).  
 3. Resolve 3rd Supabase slot (prod) when needed — do not block Git promote on prod.  
 4. Phase 0 accounts (Expo login + Apple/Google if targeting stores).  
 5. Phase 3 remaining: Supabase redirect schemes + `eas env:create` for development/preview.  

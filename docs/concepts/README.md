@@ -7,7 +7,7 @@ Prefer these over Downloads copies when implementing or reviewing.
 
 | File | What it is |
 |------|------------|
-| `adhd-timer-app-spec.md` | Full app build spec (updated daily showcase §3.0) |
+| `adhd-timer-app-spec.md` | Full app build spec (daily showcase §3.0 + Recurring Routines §9) |
 | `first-launch-showcase.html` | Interactive Figma-style concept for the style belt |
 | `first-launch-showcase.md` | Concise implementable showcase spec (once per day) |
 | `streak-logic-feature-spec.md` | Forgiving streak / freeze algorithm |

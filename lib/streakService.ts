@@ -34,6 +34,7 @@ async function ensureLocalProfile(id: string): Promise<Profile> {
     streakCount: 0,
     freezesAvailable: MAX_FREEZES,
     lastActiveDate: null,
+    deletedAt: null,
   };
   await upsertLocalProfile(profile);
   return profile;

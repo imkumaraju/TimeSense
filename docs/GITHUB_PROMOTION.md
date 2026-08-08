@@ -186,8 +186,8 @@ Repo → **Settings** → **Branches** → **Add branch protection rule** (or **
 1. [ ] Confirm branches `dev`, `sys`, `main` exist under **Code** → branch dropdown  
 2. [ ] Add protection rules for `main` and `sys` (above)  
 3. [ ] Open a no-op or real promote later only when you have commits on `dev` ahead of `sys`  
-4. [ ] Confirm sys Supabase has migrations `001`–`004` applied (same files as `supabase/migrations/`)  
-5. [ ] When prod project exists: apply `001`–`004` there before first `sys`→`main` promote that needs DB  
+4. [ ] Confirm sys Supabase has migrations `001`–`006` applied (same files as `supabase/migrations/`)  
+5. [ ] When prod project exists: apply `001`–`006` there before first `sys`→`main` promote that needs DB  
 
 **Default branch:** keep **`main`** as GitHub default (production). Day-to-day checkout is `dev`.
 

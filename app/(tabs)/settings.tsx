@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,14 +16,18 @@ import { TsCard } from '@/components/ui/TsCard';
 import { TsChip } from '@/components/ui/TsChip';
 import { TsSectionLabel } from '@/components/ui/TsSectionLabel';
 import { STYLE_OPTIONS, colors, fonts } from '@/constants/theme';
+import { softDeleteOwnAccount } from '@/lib/accountLifecycle';
+import { exportTasksCsv } from '@/lib/exportTasksCsv';
 import {
   getDefaultVisualStyle,
   getSoundHapticsEnabled,
   setDefaultVisualStyle,
   setSoundHapticsEnabled,
 } from '@/lib/settings';
+import { cancelTimerNotifications } from '@/lib/timerFeedback';
 import { getLastSyncedAt, syncNow } from '@/lib/syncService';
 import { getStreakProfile } from '@/lib/streakService';
+import { wipeLocalData } from '@/lib/tasksDb';
 import { useAuthStore } from '@/stores/authStore';
 import type { VisualStyle } from '@/types/task';
 
@@ -37,6 +42,8 @@ export default function SettingsScreen() {
   const [syncHint, setSyncHint] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [pickingStyle, setPickingStyle] = useState(false);
   const [streakCount, setStreakCount] = useState(0);
   const [freezesAvailable, setFreezesAvailable] = useState(2);
@@ -88,12 +95,75 @@ export default function SettingsScreen() {
   const onToggleSound = async (value: boolean) => {
     setSoundOn(value);
     await setSoundHapticsEnabled(value);
+    if (!value) {
+      void cancelTimerNotifications();
+    }
   };
 
   const onPickStyle = async (style: VisualStyle) => {
     setDefaultStyle(style);
     await setDefaultVisualStyle(style);
     setPickingStyle(false);
+  };
+
+  const onExport = async () => {
+    setExporting(true);
+    try {
+      const result = await exportTasksCsv();
+      if (!result.ok) {
+        Alert.alert('Export failed', result.error ?? 'Could not export.');
+      }
+    } catch (e) {
+      Alert.alert(
+        'Export failed',
+        e instanceof Error ? e.message : 'Could not export.',
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const runDeleteOrClear = async () => {
+    setDeleting(true);
+    try {
+      if (mode === 'signed_in') {
+        const result = await softDeleteOwnAccount();
+        if (!result.ok) {
+          Alert.alert('Could not delete account', result.error ?? 'Try again.');
+          return;
+        }
+      } else {
+        await wipeLocalData();
+        await cancelTimerNotifications();
+      }
+      await signOut();
+      router.replace('/');
+    } catch (e) {
+      Alert.alert(
+        'Something went wrong',
+        e instanceof Error ? e.message : 'Please try again.',
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const onDeleteOrClear = () => {
+    const signedIn = mode === 'signed_in';
+    Alert.alert(
+      signedIn ? 'Delete account?' : 'Clear local data?',
+      signedIn
+        ? 'Your account will be deactivated and removed from this device. Signing in again later starts fresh (previous timers are cleared from your account when you return).'
+        : 'This removes all timers stored on this device. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: signedIn ? 'Delete' : 'Clear',
+          style: 'destructive',
+          onPress: () => void runDeleteOrClear(),
+        },
+      ],
+    );
   };
 
   const styleLabel =
@@ -195,8 +265,31 @@ export default function SettingsScreen() {
         ) : null}
       </TsCard>
 
-      <Text style={styles.ghost}>Export data · Delete account</Text>
-      <Text style={styles.comingSoon}>Coming soon</Text>
+      <TsSectionLabel style={{ marginTop: 16 }}>Data</TsSectionLabel>
+      <TsCard style={styles.rowCard}>
+        <Text style={styles.rowLabel}>Export CSV</Text>
+        <Pressable onPress={() => void onExport()} disabled={exporting}>
+          {exporting ? (
+            <ActivityIndicator color={colors.sauce} />
+          ) : (
+            <Text style={styles.rowAction}>Share</Text>
+          )}
+        </Pressable>
+      </TsCard>
+      <TsCard style={[styles.rowCard, { marginTop: 8 }]}>
+        <Text style={styles.rowLabel}>
+          {mode === 'signed_in' ? 'Delete account' : 'Clear local data'}
+        </Text>
+        <Pressable onPress={onDeleteOrClear} disabled={deleting}>
+          {deleting ? (
+            <ActivityIndicator color={colors.sauce} />
+          ) : (
+            <Text style={[styles.rowAction, styles.danger]}>
+              {mode === 'signed_in' ? 'Delete' : 'Clear'}
+            </Text>
+          )}
+        </Pressable>
+      </TsCard>
     </ScrollView>
   );
 }
@@ -233,6 +326,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.sauce,
   },
+  danger: {
+    color: colors.sauce,
+  },
   rowMuted: {
     fontFamily: fonts.body,
     fontSize: 13,
@@ -265,21 +361,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 14,
     color: colors.ink,
-  },
-  ghost: {
-    marginTop: 28,
-    textAlign: 'center',
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    color: colors.muted,
-    textDecorationLine: 'underline',
-  },
-  comingSoon: {
-    marginTop: 4,
-    textAlign: 'center',
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.muted,
-    opacity: 0.7,
   },
 });

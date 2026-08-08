@@ -36,6 +36,8 @@ export type Task = {
   /** Bumped on every edit; drives delta sync watermark. */
   updatedAt: number;
   synced: boolean;
+  /** Optional link to a recurring routine template. */
+  routineId: string | null;
 };
 
 export type Profile = {
@@ -49,6 +51,8 @@ export type Profile = {
   streakCount: number;
   freezesAvailable: number;
   lastActiveDate: string | null;
+  /** Soft-delete marker; null means active. */
+  deletedAt: string | null;
 };
 
 export type Interruption = {
@@ -59,6 +63,34 @@ export type Interruption = {
   synced: boolean;
 };
 
+/** Recurring task template (synced). Weekdays: 0=Sun .. 6=Sat. */
+export type Routine = {
+  id: string;
+  userId: string | null;
+  name: string;
+  category: TaskCategory | null;
+  predictedSeconds: number;
+  visualStyle: VisualStyle;
+  /** Comma-separated JS weekdays 0–6. */
+  recurrenceDays: string;
+  reminderHour: number;
+  reminderMinute: number;
+  /** Local YYYY-MM-DD */
+  startDate: string;
+  endDate: string | null;
+  active: boolean;
+  createdAt: number;
+  updatedAt: number;
+  synced: boolean;
+};
+
+export type RoutineNotification = {
+  routineId: string;
+  /** Stored as JS weekday 0–6. */
+  weekday: number;
+  notificationId: string;
+};
+
 export type NewTaskInput = {
   name?: string | null;
   description?: string | null;
@@ -67,4 +99,18 @@ export type NewTaskInput = {
   visualStyle?: VisualStyle;
   userId?: string | null;
   startedAt?: number;
+  routineId?: string | null;
+};
+
+export type NewRoutineInput = {
+  name: string;
+  category?: TaskCategory | null;
+  predictedSeconds: number;
+  visualStyle?: VisualStyle;
+  recurrenceDays: number[];
+  reminderHour: number;
+  reminderMinute: number;
+  startDate?: string;
+  endDate?: string | null;
+  userId?: string | null;
 };

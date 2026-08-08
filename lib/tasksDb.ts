@@ -31,6 +31,7 @@ type TaskRow = {
   created_at: number;
   updated_at: number;
   synced: number;
+  routine_id: string | null;
 };
 
 type InterruptionRow = {
@@ -52,6 +53,7 @@ type ProfileRow = {
   streak_count: number | null;
   freezes_available: number | null;
   last_active_date: string | null;
+  deleted_at: string | null;
 };
 
 function rowToTask(row: TaskRow): Task {
@@ -70,6 +72,7 @@ function rowToTask(row: TaskRow): Task {
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
     synced: row.synced === 1,
+    routineId: row.routine_id ?? null,
   };
 }
 
@@ -95,6 +98,7 @@ function rowToProfile(row: ProfileRow): Profile {
     streakCount: row.streak_count ?? 0,
     freezesAvailable: row.freezes_available ?? 2,
     lastActiveDate: row.last_active_date,
+    deletedAt: row.deleted_at ?? null,
   };
 }
 
@@ -104,6 +108,7 @@ function normalizeTask(task: Task): Task {
     ...task,
     updatedAt: task.updatedAt ?? task.createdAt ?? task.startedAt,
     synced: Boolean(task.synced),
+    routineId: task.routineId ?? null,
   };
 }
 
@@ -130,7 +135,8 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
       mood_tag TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0
+      synced INTEGER NOT NULL DEFAULT 0,
+      routine_id TEXT
     );
 
     CREATE TABLE IF NOT EXISTS profiles (
@@ -143,7 +149,8 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
       default_visual_style TEXT DEFAULT 'pizza',
       streak_count INTEGER DEFAULT 0,
       freezes_available INTEGER DEFAULT 2,
-      last_active_date TEXT
+      last_active_date TEXT,
+      deleted_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS interruptions (
@@ -154,6 +161,31 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
       synced INTEGER NOT NULL DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS routines (
+      id TEXT PRIMARY KEY NOT NULL,
+      user_id TEXT,
+      name TEXT NOT NULL,
+      category TEXT,
+      predicted_seconds INTEGER NOT NULL,
+      visual_style TEXT NOT NULL DEFAULT 'pizza',
+      recurrence_days TEXT NOT NULL,
+      reminder_hour INTEGER NOT NULL DEFAULT 9,
+      reminder_minute INTEGER NOT NULL DEFAULT 0,
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS routine_notifications (
+      routine_id TEXT NOT NULL,
+      weekday INTEGER NOT NULL,
+      notification_id TEXT NOT NULL,
+      PRIMARY KEY (routine_id, weekday)
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -161,6 +193,7 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
 
     CREATE INDEX IF NOT EXISTS idx_tasks_user_updated ON tasks(user_id, updated_at);
     CREATE INDEX IF NOT EXISTS idx_tasks_user_category ON tasks(user_id, category);
+    CREATE INDEX IF NOT EXISTS idx_routines_user_updated ON routines(user_id, updated_at);
   `);
 
   const alterSafe = (sql: string) => {
@@ -173,9 +206,11 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
 
   alterSafe(`ALTER TABLE tasks ADD COLUMN description TEXT`);
   alterSafe(`ALTER TABLE tasks ADD COLUMN updated_at INTEGER`);
+  alterSafe(`ALTER TABLE tasks ADD COLUMN routine_id TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN username TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN first_name TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN last_name TEXT`);
+  alterSafe(`ALTER TABLE profiles ADD COLUMN deleted_at TEXT`);
 
   // Backfill updated_at for rows created before the cost-strategy schema.
   db.execSync(
@@ -261,6 +296,7 @@ export async function createTask(input: NewTaskInput): Promise<Task> {
     createdAt: now,
     updatedAt: now,
     synced: false,
+    routineId: input.routineId ?? null,
   };
 
   const db = await getSqlite();
@@ -268,8 +304,8 @@ export async function createTask(input: NewTaskInput): Promise<Task> {
     db.runSync(
       `INSERT INTO tasks (
         id, user_id, name, description, category, predicted_seconds, actual_seconds,
-        visual_style, started_at, ended_at, mood_tag, created_at, updated_at, synced
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        visual_style, started_at, ended_at, mood_tag, created_at, updated_at, synced, routine_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.userId,
@@ -285,6 +321,7 @@ export async function createTask(input: NewTaskInput): Promise<Task> {
         task.createdAt,
         task.updatedAt,
         0,
+        task.routineId,
       ],
     );
   } else {
@@ -430,8 +467,8 @@ export async function upsertLocalTask(task: Task): Promise<void> {
     db.runSync(
       `INSERT INTO tasks (
         id, user_id, name, description, category, predicted_seconds, actual_seconds,
-        visual_style, started_at, ended_at, mood_tag, created_at, updated_at, synced
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        visual_style, started_at, ended_at, mood_tag, created_at, updated_at, synced, routine_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         user_id = excluded.user_id,
         name = excluded.name,
@@ -445,7 +482,8 @@ export async function upsertLocalTask(task: Task): Promise<void> {
         mood_tag = excluded.mood_tag,
         created_at = excluded.created_at,
         updated_at = excluded.updated_at,
-        synced = excluded.synced`,
+        synced = excluded.synced,
+        routine_id = excluded.routine_id`,
       [
         normalized.id,
         normalized.userId,
@@ -461,6 +499,7 @@ export async function upsertLocalTask(task: Task): Promise<void> {
         normalized.createdAt,
         normalized.updatedAt,
         normalized.synced ? 1 : 0,
+        normalized.routineId,
       ],
     );
     return;
@@ -480,8 +519,8 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
     db.runSync(
       `INSERT INTO profiles (
         id, display_name, username, first_name, last_name, timezone, default_visual_style,
-        streak_count, freezes_available, last_active_date
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        streak_count, freezes_available, last_active_date, deleted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         display_name = excluded.display_name,
         username = excluded.username,
@@ -491,7 +530,8 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
         default_visual_style = excluded.default_visual_style,
         streak_count = excluded.streak_count,
         freezes_available = excluded.freezes_available,
-        last_active_date = excluded.last_active_date`,
+        last_active_date = excluded.last_active_date,
+        deleted_at = excluded.deleted_at`,
       [
         profile.id,
         profile.displayName,
@@ -503,6 +543,7 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
         profile.streakCount,
         profile.freezesAvailable,
         profile.lastActiveDate,
+        profile.deletedAt,
       ],
     );
     return;
@@ -529,6 +570,7 @@ export async function getLocalProfile(id: string): Promise<Profile | null> {
       username: profile.username ?? null,
       firstName: profile.firstName ?? null,
       lastName: profile.lastName ?? null,
+      deletedAt: profile.deletedAt ?? null,
     };
   } catch {
     return null;
@@ -620,4 +662,79 @@ export async function endInterruption(
       r.id === interruptionId ? { ...r, endedAt: atMs, synced: false } : r,
     ),
   );
+}
+
+/** Wipe all local task / interruption / profile rows (does not touch auth session). */
+export async function wipeLocalData(): Promise<void> {
+  await initTasksDb();
+  const db = await getSqlite();
+  if (db) {
+    db.execSync(`
+      DELETE FROM interruptions;
+      DELETE FROM tasks;
+      DELETE FROM profiles;
+      DELETE FROM routine_notifications;
+      DELETE FROM routines;
+    `);
+  }
+  await AsyncStorage.multiRemove([
+    WEB_KEY,
+    WEB_INTERRUPTIONS_KEY,
+    WEB_PROFILE_KEY,
+  ]);
+  try {
+    const { wipeLocalRoutines } = await import('@/lib/routinesDb');
+    await wipeLocalRoutines();
+  } catch {
+    // ignore
+  }
+  try {
+    const { clearSyncState } = await import('@/lib/syncService');
+    await clearSyncState();
+  } catch {
+    // sync module optional during early init
+  }
+}
+
+/**
+ * Remove local rows owned by a signed-in user; keep guest (user_id IS NULL) tasks.
+ */
+export async function wipeLocalUserData(userId: string): Promise<void> {
+  await initTasksDb();
+  const db = await getSqlite();
+  if (db) {
+    db.runSync(
+      `DELETE FROM interruptions WHERE task_id IN (
+         SELECT id FROM tasks WHERE user_id = ?
+       )`,
+      [userId],
+    );
+    db.runSync(`DELETE FROM tasks WHERE user_id = ?`, [userId]);
+    db.runSync(`DELETE FROM profiles WHERE id = ?`, [userId]);
+    return;
+  }
+
+  const tasks = await readAsyncTasks();
+  const keep = tasks.filter((t) => t.userId !== userId);
+  const removedIds = new Set(
+    tasks.filter((t) => t.userId === userId).map((t) => t.id),
+  );
+  await writeAsyncTasks(keep);
+
+  const interruptions = await readAsyncInterruptions();
+  await writeAsyncInterruptions(
+    interruptions.filter((r) => !removedIds.has(r.taskId)),
+  );
+
+  const raw = await AsyncStorage.getItem(WEB_PROFILE_KEY);
+  if (raw) {
+    try {
+      const profile = JSON.parse(raw) as Profile;
+      if (profile.id === userId) {
+        await AsyncStorage.removeItem(WEB_PROFILE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }
 }

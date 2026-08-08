@@ -18,6 +18,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { colors } from '@/constants/theme';
+import { cancelExpiredRoutineNotifications } from '@/lib/routineNotifications';
 import { useAuthStore } from '@/stores/authStore';
 
 export { ErrorBoundary } from 'expo-router';
@@ -56,6 +57,10 @@ export default function RootLayout() {
   useEffect(() => {
     return hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    void cancelExpiredRoutineNotifications();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {

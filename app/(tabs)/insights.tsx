@@ -6,77 +6,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TsCard } from '@/components/ui/TsCard';
 import { TsChip } from '@/components/ui/TsChip';
 import { colors, fonts } from '@/constants/theme';
+import {
+  buildCategoryStats,
+  buildInsightCards,
+  categoryLabel,
+  type InsightsRange,
+} from '@/lib/insightsStats';
 import { listRecentTasks } from '@/lib/tasksDb';
-import type { Task, TaskCategory } from '@/types/task';
-
-type Range = 'month' | 'all';
-
-type CatStat = {
-  category: string;
-  predictedAvgMin: number;
-  actualAvgMin: number;
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  chores: 'Chores',
-  work: 'Work',
-  study: 'Study',
-  errands: 'Errands',
-  creative: 'Creative',
-  other: 'Other',
-};
-
-function inRange(task: Task, range: Range): boolean {
-  if (range === 'all') return true;
-  const start = new Date();
-  start.setDate(1);
-  start.setHours(0, 0, 0, 0);
-  return task.startedAt >= start.getTime();
-}
-
-function buildStats(tasks: Task[], range: Range): CatStat[] {
-  const done = tasks.filter(
-    (t) => t.actualSeconds != null && inRange(t, range),
-  );
-  const byCat = new Map<string, { p: number[]; a: number[] }>();
-  for (const t of done) {
-    const key = (t.category as TaskCategory | null) ?? 'other';
-    const bucket = byCat.get(key) ?? { p: [], a: [] };
-    bucket.p.push(t.predictedSeconds);
-    bucket.a.push(t.actualSeconds!);
-    byCat.set(key, bucket);
-  }
-  return Array.from(byCat.entries()).map(([category, { p, a }]) => ({
-    category,
-    predictedAvgMin:
-      p.reduce((s, n) => s + n, 0) / p.length / 60,
-    actualAvgMin: a.reduce((s, n) => s + n, 0) / a.length / 60,
-  }));
-}
-
-function insightLine(stats: CatStat[]): string | null {
-  if (stats.length === 0) return null;
-  let worst: CatStat | null = null;
-  let worstPct = 0;
-  for (const s of stats) {
-    if (s.predictedAvgMin <= 0) continue;
-    const pct =
-      ((s.actualAvgMin - s.predictedAvgMin) / s.predictedAvgMin) * 100;
-    if (pct > worstPct) {
-      worstPct = pct;
-      worst = s;
-    }
-  }
-  if (!worst || worstPct < 10) {
-    return 'Your predictions are tracking closely — keep logging.';
-  }
-  const label = CATEGORY_LABELS[worst.category] ?? worst.category;
-  return `You tend to underestimate ${label} by ~${Math.round(worstPct)}%.`;
-}
+import type { Task } from '@/types/task';
 
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
-  const [range, setRange] = useState<Range>('month');
+  const [range, setRange] = useState<InsightsRange>('month');
   const [tasks, setTasks] = useState<Task[]>([]);
 
   useFocusEffect(
@@ -85,12 +26,12 @@ export default function InsightsScreen() {
     }, []),
   );
 
-  const stats = useMemo(() => buildStats(tasks, range), [tasks, range]);
+  const stats = useMemo(() => buildCategoryStats(tasks, range), [tasks, range]);
+  const cards = useMemo(() => buildInsightCards(stats), [stats]);
   const maxMin = Math.max(
     1,
     ...stats.flatMap((s) => [s.predictedAvgMin, s.actualAvgMin]),
   );
-  const insight = insightLine(stats);
 
   return (
     <ScrollView
@@ -102,6 +43,11 @@ export default function InsightsScreen() {
       <Text style={styles.title}>Your patterns</Text>
 
       <View style={styles.chips}>
+        <TsChip
+          label="This week"
+          active={range === 'week'}
+          onPress={() => setRange('week')}
+        />
         <TsChip
           label="This month"
           active={range === 'month'}
@@ -121,9 +67,16 @@ export default function InsightsScreen() {
             Finish a few timers to see calibration by category.
           </Text>
         ) : (
-          <View style={styles.chart}>
-            {stats.slice(0, 4).map((s) => (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chart}>
+            {stats.map((s) => (
               <View key={s.category} style={styles.barGroup}>
+                <Text style={styles.biasLabel}>
+                  {s.biasPct >= 0 ? '+' : ''}
+                  {Math.round(s.biasPct)}%
+                </Text>
                 <View style={styles.bars}>
                   <View
                     style={[
@@ -148,11 +101,15 @@ export default function InsightsScreen() {
                   />
                 </View>
                 <Text style={styles.barLabel}>
-                  {CATEGORY_LABELS[s.category] ?? s.category}
+                  {categoryLabel(s.category)}
+                </Text>
+                <Text style={styles.barMeta}>
+                  {Math.round(s.predictedAvgMin)}m → {Math.round(s.actualAvgMin)}
+                  m
                 </Text>
               </View>
             ))}
-          </View>
+          </ScrollView>
         )}
         <View style={styles.legend}>
           <Text style={styles.legendItem}>
@@ -164,11 +121,11 @@ export default function InsightsScreen() {
         </View>
       </TsCard>
 
-      {insight ? (
-        <TsCard style={styles.insightCard}>
-          <Text style={styles.insightText}>{insight}</Text>
+      {cards.map((card) => (
+        <TsCard key={card.id} style={styles.insightCard}>
+          <Text style={styles.insightText}>{card.text}</Text>
         </TsCard>
-      ) : null}
+      ))}
     </ScrollView>
   );
 }
@@ -189,6 +146,7 @@ const styles = StyleSheet.create({
   },
   chips: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
   },
@@ -207,15 +165,20 @@ const styles = StyleSheet.create({
   chart: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 12,
-    height: 120,
-    marginBottom: 10,
+    gap: 14,
+    minHeight: 150,
+    paddingBottom: 4,
   },
   barGroup: {
-    flex: 1,
+    width: 72,
     alignItems: 'center',
-    height: '100%',
     justifyContent: 'flex-end',
+  },
+  biasLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.muted,
+    marginBottom: 4,
   },
   bars: {
     flexDirection: 'row',
@@ -237,12 +200,20 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontFamily: fonts.body,
     fontSize: 11,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  barMeta: {
+    marginTop: 2,
+    fontFamily: fonts.body,
+    fontSize: 10,
     color: colors.muted,
+    textAlign: 'center',
   },
   legend: {
     flexDirection: 'row',
     gap: 16,
-    marginTop: 4,
+    marginTop: 10,
   },
   legendItem: {
     fontFamily: fonts.body,
