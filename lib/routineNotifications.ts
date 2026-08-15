@@ -84,6 +84,14 @@ export async function pauseRoutine(routineId: string): Promise<void> {
   await setRoutineActive(routineId, false);
 }
 
+/** Reactivate a paused routine and reschedule its weekly reminders. */
+export async function resumeRoutine(routineId: string): Promise<void> {
+  const routine = await setRoutineActive(routineId, true);
+  if (routine) {
+    await rescheduleRoutineNotifications(routine);
+  }
+}
+
 export async function deleteRoutineFully(routineId: string): Promise<void> {
   await cancelRoutineNotifications(routineId);
   const { deleteRoutineLocal } = await import('@/lib/routinesDb');

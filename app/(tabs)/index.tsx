@@ -105,7 +105,12 @@ export default function HomeScreen() {
 
       {routinesDueToday.length > 0 ? (
         <>
-          <TsSectionLabel>Today&apos;s Routines</TsSectionLabel>
+          <View style={styles.sectionHead}>
+            <TsSectionLabel style={{ marginBottom: 0 }}>Today&apos;s Routines</TsSectionLabel>
+            <Pressable onPress={() => router.push('/routines')} hitSlop={8}>
+              <Text style={styles.seeAll}>See all ›</Text>
+            </Pressable>
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -255,6 +260,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 18,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  seeAll: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: colors.sauce,
   },
   routineScroll: {
     gap: 8,

@@ -27,6 +27,7 @@ import {
 import { cancelTimerNotifications } from '@/lib/timerFeedback';
 import { getLastSyncedAt, syncNow } from '@/lib/syncService';
 import { getStreakProfile } from '@/lib/streakService';
+import { listRoutines } from '@/lib/routinesDb';
 import { wipeLocalData } from '@/lib/tasksDb';
 import { useAuthStore } from '@/stores/authStore';
 import type { VisualStyle } from '@/types/task';
@@ -47,6 +48,8 @@ export default function SettingsScreen() {
   const [pickingStyle, setPickingStyle] = useState(false);
   const [streakCount, setStreakCount] = useState(0);
   const [freezesAvailable, setFreezesAvailable] = useState(2);
+  const [routineCount, setRoutineCount] = useState(0);
+  const [activeRoutineCount, setActiveRoutineCount] = useState(0);
 
   const reload = useCallback(async () => {
     setDefaultStyle(await getDefaultVisualStyle());
@@ -54,6 +57,9 @@ export default function SettingsScreen() {
     const profile = await getStreakProfile(user?.id ?? null);
     setStreakCount(profile?.streakCount ?? 0);
     setFreezesAvailable(profile?.freezesAvailable ?? 2);
+    const routines = await listRoutines();
+    setRoutineCount(routines.length);
+    setActiveRoutineCount(routines.filter((r) => r.active).length);
     const last = await getLastSyncedAt();
     if (last) {
       setSyncHint(`Last synced ${new Date(last).toLocaleString()}`);
@@ -219,6 +225,14 @@ export default function SettingsScreen() {
           <Text style={styles.rowMuted}>{styleLabel} ›</Text>
         </Pressable>
       </TsCard>
+      {routineCount > 0 ? (
+        <TsCard style={[styles.rowCard, { marginTop: 8 }]}>
+          <Text style={styles.rowLabel}>Routines</Text>
+          <Pressable onPress={() => router.push('/routines')}>
+            <Text style={styles.rowMuted}>{activeRoutineCount} active ›</Text>
+          </Pressable>
+        </TsCard>
+      ) : null}
       {pickingStyle ? (
         <View style={styles.chips}>
           {STYLE_OPTIONS.map((opt) => (
@@ -288,6 +302,20 @@ export default function SettingsScreen() {
               {mode === 'signed_in' ? 'Delete' : 'Clear'}
             </Text>
           )}
+        </Pressable>
+      </TsCard>
+
+      <TsSectionLabel style={{ marginTop: 16 }}>Legal</TsSectionLabel>
+      <TsCard style={styles.rowCard}>
+        <Text style={styles.rowLabel}>Privacy Policy</Text>
+        <Pressable onPress={() => router.push('/legal/privacy')}>
+          <Text style={styles.rowAction}>View ›</Text>
+        </Pressable>
+      </TsCard>
+      <TsCard style={[styles.rowCard, { marginTop: 8 }]}>
+        <Text style={styles.rowLabel}>Terms & Conditions</Text>
+        <Pressable onPress={() => router.push('/legal/terms')}>
+          <Text style={styles.rowAction}>View ›</Text>
         </Pressable>
       </TsCard>
     </ScrollView>

@@ -278,6 +278,18 @@ export async function initTasksDb(): Promise<void> {
   return initPromise;
 }
 
+/**
+ * Shared native connection for other local-data modules (e.g. routinesDb).
+ * Never open a second `openDatabaseSync('timesense.db')` connection —
+ * concurrent connections to the same file are a real source of Android
+ * `NativeDatabase.prepareSync` crashes. Returns null on web / Expo Go,
+ * where callers should fall back to AsyncStorage.
+ */
+export async function getSharedSqliteDb() {
+  await initTasksDb();
+  return getSqlite();
+}
+
 export async function createTask(input: NewTaskInput): Promise<Task> {
   await initTasksDb();
   const now = input.startedAt ?? Date.now();

@@ -12,7 +12,7 @@ import {
   localDateString,
   serializeRecurrenceDays,
 } from '@/lib/routineLogic';
-import { initTasksDb } from '@/lib/tasksDb';
+import { getSharedSqliteDb } from '@/lib/tasksDb';
 import type {
   NewRoutineInput,
   Routine,
@@ -63,20 +63,7 @@ function rowToRoutine(row: RoutineRow): Routine {
 }
 
 async function getSqlite() {
-  await initTasksDb();
-  // Re-open via tasksDb's path: import private helper by opening again
-  const Constants = await import('expo-constants');
-  const { Platform } = await import('react-native');
-  const useAsync =
-    Platform.OS === 'web' || Constants.default.appOwnership === 'expo';
-  if (useAsync) return null;
-  try {
-    const SQLite = await import('expo-sqlite');
-    const db = SQLite.openDatabaseSync('timesense.db');
-    return db;
-  } catch {
-    return null;
-  }
+  return getSharedSqliteDb();
 }
 
 async function readAsyncRoutines(): Promise<Routine[]> {
@@ -245,6 +232,40 @@ export async function markRoutinesSynced(ids: string[]): Promise<void> {
   await writeAsyncRoutines(
     rows.map((r) => (ids.includes(r.id) ? { ...r, synced: true } : r)),
   );
+}
+
+/** Patch an existing routine's fields (name/duration/style/days/time/end date). */
+export async function updateRoutine(
+  id: string,
+  patch: Partial<NewRoutineInput>,
+): Promise<Routine | null> {
+  const existing = await getRoutineById(id);
+  if (!existing) return null;
+
+  const days =
+    patch.recurrenceDays != null
+      ? serializeRecurrenceDays(patch.recurrenceDays)
+      : existing.recurrenceDays;
+  if (!days) {
+    throw new Error('Pick at least one day for the routine.');
+  }
+
+  const next: Routine = {
+    ...existing,
+    name: patch.name !== undefined ? patch.name.trim() || 'Routine' : existing.name,
+    category: patch.category !== undefined ? patch.category : existing.category,
+    predictedSeconds: patch.predictedSeconds ?? existing.predictedSeconds,
+    visualStyle: patch.visualStyle ?? existing.visualStyle,
+    recurrenceDays: days,
+    reminderHour: patch.reminderHour ?? existing.reminderHour,
+    reminderMinute: patch.reminderMinute ?? existing.reminderMinute,
+    endDate: patch.endDate !== undefined ? patch.endDate : existing.endDate,
+    updatedAt: Date.now(),
+    synced: false,
+  };
+  await upsertLocalRoutine(next);
+  nudgeSync();
+  return next;
 }
 
 export async function setRoutineActive(

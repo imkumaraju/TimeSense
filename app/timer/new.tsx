@@ -10,10 +10,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RepeatFields, defaultEndDate, type RepeatFieldsValue } from '@/components/routines/RepeatFields';
 import { TsButton } from '@/components/ui/TsButton';
 import { TsChip } from '@/components/ui/TsChip';
 import { TsSectionLabel } from '@/components/ui/TsSectionLabel';
@@ -23,6 +23,7 @@ import {
   colors,
   fonts,
 } from '@/constants/theme';
+import { localDateString } from '@/lib/routineLogic';
 import { rescheduleRoutineNotifications } from '@/lib/routineNotifications';
 import { createRoutine } from '@/lib/routinesDb';
 import { getDefaultVisualStyle } from '@/lib/settings';
@@ -31,27 +32,6 @@ import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { TaskCategory, VisualStyle } from '@/types/task';
 
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-function localDateString(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function formatTime(hour: number, minute: number): string {
-  const period = hour >= 12 ? 'PM' : 'AM';
-  const h12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h12}:${String(minute).padStart(2, '0')} ${period}`;
-}
-
-function defaultEndDate(): Date {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 3);
-  return d;
-}
-
 export default function NewTimerScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
@@ -59,6 +39,7 @@ export default function NewTimerScreen() {
     name?: string;
     category?: string;
     visualStyle?: string;
+    repeat?: string;
   }>();
   const initialMinutes = Number(params.minutes) || 25;
 
@@ -75,14 +56,14 @@ export default function NewTimerScreen() {
   const [hintMinutes, setHintMinutes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [repeat, setRepeat] = useState(false);
-  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
-  const [reminderHour, setReminderHour] = useState(9);
-  const [reminderMinute, setReminderMinute] = useState(0);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [endMode, setEndMode] = useState<'ongoing' | 'date'>('ongoing');
-  const [endDate, setEndDate] = useState<Date>(defaultEndDate());
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [repeat, setRepeat] = useState(params.repeat === '1');
+  const [repeatFields, setRepeatFields] = useState<RepeatFieldsValue>({
+    recurrenceDays: [],
+    reminderHour: 9,
+    reminderMinute: 0,
+    endMode: 'ongoing',
+    endDate: defaultEndDate(),
+  });
 
   const start = useActiveTimerStore((s) => s.start);
   const user = useAuthStore((s) => s.user);
@@ -138,12 +119,6 @@ export default function NewTimerScreen() {
     return () => clearTimeout(t);
   }, [name, refreshHint]);
 
-  const toggleDay = (day: number) => {
-    setRecurrenceDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort(),
-    );
-  };
-
   const onStart = async () => {
     const mins = editingMinutes
       ? clampMinutes(Number(minutesText) || minutes)
@@ -162,10 +137,13 @@ export default function NewTimerScreen() {
           category,
           predictedSeconds,
           visualStyle,
-          recurrenceDays,
-          reminderHour,
-          reminderMinute,
-          endDate: endMode === 'date' ? localDateString(endDate) : null,
+          recurrenceDays: repeatFields.recurrenceDays,
+          reminderHour: repeatFields.reminderHour,
+          reminderMinute: repeatFields.reminderMinute,
+          endDate:
+            repeatFields.endMode === 'date'
+              ? localDateString(repeatFields.endDate)
+              : null,
           userId: user?.id ?? null,
         });
         await rescheduleRoutineNotifications(routine);
@@ -282,102 +260,7 @@ export default function NewTimerScreen() {
 
         {repeat ? (
           <View style={styles.repeatPanel}>
-            <TsSectionLabel>On these days</TsSectionLabel>
-            <View style={styles.dayRow}>
-              {DAY_LABELS.map((label, day) => (
-                <Pressable
-                  key={day}
-                  style={[
-                    styles.dayChip,
-                    recurrenceDays.includes(day) && styles.dayChipActive,
-                  ]}
-                  onPress={() => toggleDay(day)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: recurrenceDays.includes(day) }}>
-                  <Text
-                    style={[
-                      styles.dayChipText,
-                      recurrenceDays.includes(day) && styles.dayChipTextActive,
-                    ]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <TsSectionLabel>Reminder time</TsSectionLabel>
-            <Pressable
-              style={styles.input}
-              onPress={() => setShowTimePicker(true)}
-              accessibilityRole="button">
-              <Text style={{ fontFamily: fonts.body, color: colors.ink }}>
-                {formatTime(reminderHour, reminderMinute)}
-              </Text>
-            </Pressable>
-            {showTimePicker ? (
-              <DateTimePicker
-                mode="time"
-                value={(() => {
-                  const d = new Date();
-                  d.setHours(reminderHour, reminderMinute, 0, 0);
-                  return d;
-                })()}
-                onChange={(_event, selected) => {
-                  setShowTimePicker(Platform.OS === 'ios');
-                  if (selected) {
-                    setReminderHour(selected.getHours());
-                    setReminderMinute(selected.getMinutes());
-                  }
-                }}
-              />
-            ) : null}
-
-            <TsSectionLabel>Ends</TsSectionLabel>
-            <View style={styles.segmented}>
-              <Pressable
-                style={[styles.seg, endMode === 'ongoing' && styles.segActive]}
-                onPress={() => setEndMode('ongoing')}>
-                <Text
-                  style={[
-                    styles.segText,
-                    endMode === 'ongoing' && styles.segTextActive,
-                  ]}>
-                  Ongoing
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.seg, endMode === 'date' && styles.segActive]}
-                onPress={() => setEndMode('date')}>
-                <Text
-                  style={[
-                    styles.segText,
-                    endMode === 'date' && styles.segTextActive,
-                  ]}>
-                  On a date
-                </Text>
-              </Pressable>
-            </View>
-            {endMode === 'date' ? (
-              <Pressable
-                style={styles.input}
-                onPress={() => setShowEndPicker(true)}
-                accessibilityRole="button">
-                <Text style={{ fontFamily: fonts.body, color: colors.ink }}>
-                  {endDate.toLocaleDateString()}
-                </Text>
-              </Pressable>
-            ) : null}
-            {showEndPicker ? (
-              <DateTimePicker
-                mode="date"
-                value={endDate}
-                minimumDate={new Date(Date.now() + 24 * 60 * 60 * 1000)}
-                onChange={(_event, selected) => {
-                  setShowEndPicker(Platform.OS === 'ios');
-                  if (selected) setEndDate(selected);
-                }}
-              />
-            ) : null}
+            <RepeatFields value={repeatFields} onChange={setRepeatFields} />
           </View>
         ) : null}
 
@@ -411,7 +294,7 @@ export default function NewTimerScreen() {
         <TsButton
           label={repeat ? 'Save Routine' : 'Start Timer'}
           block
-          disabled={busy || (repeat && recurrenceDays.length === 0)}
+          disabled={busy || (repeat && repeatFields.recurrenceDays.length === 0)}
           onPress={() => void onStart()}
         />
       </ScrollView>
@@ -531,58 +414,5 @@ const styles = StyleSheet.create({
   },
   repeatPanel: {
     marginBottom: 8,
-  },
-  dayRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 14,
-  },
-  dayChip: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dayChipActive: {
-    backgroundColor: colors.crust,
-    borderColor: colors.crust,
-  },
-  dayChipText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    color: colors.muted,
-  },
-  dayChipTextActive: {
-    color: colors.board,
-  },
-  segmented: {
-    flexDirection: 'row',
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 3,
-    marginBottom: 10,
-  },
-  seg: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  segActive: {
-    backgroundColor: colors.crust,
-  },
-  segText: {
-    fontFamily: fonts.bodySemi,
-    fontSize: 12,
-    color: colors.muted,
-  },
-  segTextActive: {
-    color: colors.board,
   },
 });

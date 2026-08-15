@@ -2,9 +2,12 @@
  * Multi-env Expo config. Native IDs + URL scheme follow APP_ENV
  * (set by eas.json build profiles, or locally before `expo start`).
  *
- *   APP_ENV=development → com.timesense.dev  / timesense-dev
- *   APP_ENV=preview     → com.timesense.sys  / timesense-sys  (sys/staging)
- *   APP_ENV=production  → com.timesense      / timesense
+ *   APP_ENV=development → com.timesense.dev  / timesense-dev  (dev)
+ *   APP_ENV=preview     → com.timesense.sys  / timesense-sys  (PRODUCTION — real users, Play Store)
+ *   APP_ENV=production  → com.timesense      / timesense      (dormant — future 3rd tier, not built)
+ *
+ * 2-tier setup: `sys` (APP_ENV=preview) is production. `production` config below is kept
+ * unused so a real 3rd tier can be added later without restructuring this file.
  *
  * Defaults to development so local `npx expo start` stays on the dev app.
  */
@@ -36,10 +39,11 @@ const ENV_CONFIG = {
     scheme: 'timesense-dev',
   },
   preview: {
-    name: 'TimeSense Staging',
+    name: 'TimeSense',
     bundleId: 'com.timesense.sys',
     scheme: 'timesense-sys',
   },
+  // Dormant — future 3rd tier, not currently built or deployed.
   production: {
     name: 'TimeSense',
     bundleId: 'com.timesense',

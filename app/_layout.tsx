@@ -104,6 +104,22 @@ export default function RootLayout() {
             name="timer/complete"
             options={{ headerShown: false, animation: 'fade' }}
           />
+          <Stack.Screen
+            name="routines/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="routines/[id]"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="legal/privacy"
+            options={{ title: 'Privacy Policy' }}
+          />
+          <Stack.Screen
+            name="legal/terms"
+            options={{ title: 'Terms & Conditions' }}
+          />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
