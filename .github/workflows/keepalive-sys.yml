@@ -16,7 +16,7 @@ jobs:
     name: Ping sys REST endpoint
     runs-on: ubuntu-latest
     steps:
-      - name: Curl tasks table
+      - name: Curl REST API root
         env:
           SUPABASE_SYS_URL: ${{ secrets.SUPABASE_SYS_URL }}
           SUPABASE_SYS_ANON_KEY: ${{ secrets.SUPABASE_SYS_ANON_KEY }}
@@ -25,8 +25,10 @@ jobs:
             echo "::error::SUPABASE_SYS_URL / SUPABASE_SYS_ANON_KEY repo secrets are not set."
             exit 1
           fi
+          # Hits the REST root (OpenAPI description) instead of a real table —
+          # this wakes the project without needing a GRANT on any app table for anon.
           status=$(curl -s -o /tmp/body.json -w "%{http_code}" \
-            "$SUPABASE_SYS_URL/rest/v1/tasks?select=id&limit=1" \
+            "$SUPABASE_SYS_URL/rest/v1/" \
             -H "apikey: $SUPABASE_SYS_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_SYS_ANON_KEY")
           echo "HTTP $status"
