@@ -9,6 +9,12 @@ import {
   type TimerDerived,
   type TimerSnapshot,
 } from '@/lib/timerMath';
+import {
+  cancelTimerNotifications,
+  EMPTY_MILESTONE_FLAGS,
+  type MilestoneFireFlags,
+  syncTimerNotifications,
+} from '@/lib/timerFeedback';
 import { endInterruption, startInterruption } from '@/lib/tasksDb';
 import type { TaskCategory, VisualStyle } from '@/types/task';
 
@@ -26,6 +32,7 @@ export type ActiveTimerMeta = {
 type ActiveTimerState = {
   snapshot: TimerSnapshot | null;
   meta: ActiveTimerMeta | null;
+  milestoneFlags: MilestoneFireFlags;
   /** Tick counter so UI can re-derive without storing elapsed. */
   tick: number;
   start: (durationSeconds: number, meta?: Partial<ActiveTimerMeta>) => void;
@@ -35,6 +42,7 @@ type ActiveTimerState = {
   toggleDigital: () => void;
   /** Force a re-derive (call from interval / AppState). */
   pulse: () => void;
+  setMilestoneFlags: (flags: MilestoneFireFlags) => void;
   clear: () => void;
   getDerived: (nowMs?: number) => TimerDerived | null;
 };
@@ -52,14 +60,18 @@ const defaultMeta: ActiveTimerMeta = {
 export const useActiveTimerStore = create<ActiveTimerState>((set, get) => ({
   snapshot: null,
   meta: null,
+  milestoneFlags: EMPTY_MILESTONE_FLAGS,
   tick: 0,
 
   start: (durationSeconds, meta) => {
+    const snapshot = createTimer(durationSeconds);
     set({
-      snapshot: createTimer(durationSeconds),
+      snapshot,
       meta: { ...defaultMeta, ...meta, openInterruptionId: null },
+      milestoneFlags: EMPTY_MILESTONE_FLAGS,
       tick: 0,
     });
+    void syncTimerNotifications(snapshot);
   },
 
   pause: () => {
@@ -67,6 +79,7 @@ export const useActiveTimerStore = create<ActiveTimerState>((set, get) => ({
     if (!snapshot || snapshot.pauseStartedAtMs != null) return;
     const now = Date.now();
     set({ snapshot: pauseTimer(snapshot, now), tick: get().tick + 1 });
+    void cancelTimerNotifications();
 
     if (meta?.taskId) {
       void startInterruption(meta.taskId, now).then((row) => {
@@ -85,11 +98,13 @@ export const useActiveTimerStore = create<ActiveTimerState>((set, get) => ({
     if (!snapshot || snapshot.pauseStartedAtMs == null) return;
     const now = Date.now();
     const openId = meta?.openInterruptionId ?? null;
+    const next = resumeTimer(snapshot, now);
     set({
-      snapshot: resumeTimer(snapshot, now),
+      snapshot: next,
       meta: meta ? { ...meta, openInterruptionId: null } : meta,
       tick: get().tick + 1,
     });
+    void syncTimerNotifications(next);
     if (openId) {
       void endInterruption(openId, now);
     }
@@ -98,7 +113,9 @@ export const useActiveTimerStore = create<ActiveTimerState>((set, get) => ({
   addFiveMinutes: () => {
     const { snapshot } = get();
     if (!snapshot) return;
-    set({ snapshot: addDurationSeconds(snapshot, 300), tick: get().tick + 1 });
+    const next = addDurationSeconds(snapshot, 300);
+    set({ snapshot: next, tick: get().tick + 1 });
+    void syncTimerNotifications(next);
   },
 
   toggleDigital: () => {
@@ -109,12 +126,20 @@ export const useActiveTimerStore = create<ActiveTimerState>((set, get) => ({
 
   pulse: () => set({ tick: get().tick + 1 }),
 
+  setMilestoneFlags: (flags) => set({ milestoneFlags: flags }),
+
   clear: () => {
     const openId = get().meta?.openInterruptionId;
     if (openId) {
       void endInterruption(openId, Date.now());
     }
-    set({ snapshot: null, meta: null, tick: 0 });
+    void cancelTimerNotifications();
+    set({
+      snapshot: null,
+      meta: null,
+      milestoneFlags: EMPTY_MILESTONE_FLAGS,
+      tick: 0,
+    });
   },
 
   getDerived: (nowMs = Date.now()) => {

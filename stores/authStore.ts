@@ -67,9 +67,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!alive) return;
       if (session) {
         set({ mode: 'signed_in', session, user: session.user, error: null });
-        // Delta pull + flush unsynced guest rows after login / token refresh.
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          void import('@/lib/syncService').then(({ syncNow }) => syncNow());
+          void (async () => {
+            try {
+              const { prepareAccountAfterAuth } = await import(
+                '@/lib/accountLifecycle'
+              );
+              const prepared = await prepareAccountAfterAuth(session.user, {
+                freshStartIfInactive: event === 'SIGNED_IN',
+              });
+              if (prepared.status === 'signed_out_inactive') {
+                if (!alive) return;
+                set({ mode: 'guest', session: null, user: null });
+                return;
+              }
+              const { syncNow } = await import('@/lib/syncService');
+              await syncNow();
+            } catch (e) {
+              if (!alive) return;
+              set({
+                error:
+                  e instanceof Error ? e.message : 'Could not prepare account',
+              });
+            }
+          })();
         }
       } else {
         set({ mode: 'guest', session: null, user: null });

@@ -1,5 +1,11 @@
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,6 +26,11 @@ const MOODS: Array<{ label: string; value: MoodTag }> = [
   { label: 'Dragged on', value: 'dragged_on' },
 ];
 
+function clampMinutes(n: number): number {
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(1, Math.min(24 * 60, Math.round(n)));
+}
+
 export default function TaskCompleteScreen() {
   const insets = useSafeAreaInsets();
   const meta = useActiveTimerStore((s) => s.meta);
@@ -32,16 +43,25 @@ export default function TaskCompleteScreen() {
   const derived = getDerived(Date.now());
   const [mood, setMood] = useState<MoodTag>('about_right');
   const [saving, setSaving] = useState(false);
+  const [actualMinutes, setActualMinutes] = useState(1);
+  const [seeded, setSeeded] = useState(false);
 
-  const actualMinutes = useMemo(() => {
-    if (!derived) return 0;
-    return Math.max(1, Math.round(derived.elapsedSeconds / 60));
-  }, [derived]);
+  useEffect(() => {
+    if (seeded || !derived) return;
+    setActualMinutes(clampMinutes(derived.elapsedSeconds / 60));
+    setSeeded(true);
+  }, [derived, seeded]);
 
   const predictedMins = snapshot
     ? Math.max(1, Math.round(snapshot.durationSeconds / 60))
     : actualMinutes;
   const delta = actualMinutes - predictedMins;
+
+  const deltaLabel = useMemo(() => {
+    if (delta === 0) return 'Right on your prediction';
+    if (delta > 0) return `${delta}m over your prediction`;
+    return `${Math.abs(delta)}m under your prediction`;
+  }, [delta]);
 
   if (!meta || !derived) {
     return <View style={styles.container} />;
@@ -51,8 +71,8 @@ export default function TaskCompleteScreen() {
     if (!meta.taskId || saving) return;
     setSaving(true);
     try {
-      const elapsedSeconds = Math.max(1, derived.elapsedSeconds);
-      await completeTask(meta.taskId, elapsedSeconds, Date.now(), mood);
+      const mins = clampMinutes(actualMinutes);
+      await completeTask(meta.taskId, mins * 60, Date.now(), mood);
       await recordStreakOnTaskComplete(user?.id ?? null);
       clear();
       if (mode === 'signed_in') {
@@ -64,13 +84,6 @@ export default function TaskCompleteScreen() {
     }
   };
 
-  const deltaLabel =
-    delta === 0
-      ? 'Right on your prediction'
-      : delta > 0
-        ? `${delta}m over your prediction`
-        : `${Math.abs(delta)}m under your prediction`;
-
   return (
     <View
       style={[
@@ -81,11 +94,27 @@ export default function TaskCompleteScreen() {
       <Text style={styles.title}>Nice work!</Text>
       <Text style={styles.sub}>How long did that actually take?</Text>
 
-      <Text style={styles.actual}>
-        {actualMinutes}
-        <Text style={styles.actualUnit}> min</Text>
+      <View style={styles.stepperRow}>
+        <Pressable
+          style={styles.stepperBtn}
+          onPress={() => setActualMinutes((m) => clampMinutes(m - 1))}
+          hitSlop={8}>
+          <Text style={styles.stepperBtnText}>−</Text>
+        </Pressable>
+        <Text style={styles.actual}>
+          {actualMinutes}
+          <Text style={styles.actualUnit}> min</Text>
+        </Text>
+        <Pressable
+          style={styles.stepperBtn}
+          onPress={() => setActualMinutes((m) => clampMinutes(m + 1))}
+          hitSlop={8}>
+          <Text style={styles.stepperBtnText}>+</Text>
+        </Pressable>
+      </View>
+      <Text style={[styles.delta, delta > 0 && styles.deltaOver]}>
+        {deltaLabel}
       </Text>
-      <Text style={[styles.delta, delta > 0 && styles.deltaOver]}>{deltaLabel}</Text>
 
       <TsSectionLabel style={{ alignSelf: 'center', marginTop: 8 }}>
         How did it feel?
@@ -106,7 +135,12 @@ export default function TaskCompleteScreen() {
       {saving ? (
         <ActivityIndicator color={colors.sauce} style={{ marginBottom: 12 }} />
       ) : null}
-      <TsButton label="Save" block disabled={saving} onPress={() => void onSave()} />
+      <TsButton
+        label="Save"
+        block
+        disabled={saving}
+        onPress={() => void onSave()}
+      />
     </View>
   );
 }
@@ -137,10 +171,33 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textAlign: 'center',
   },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  stepperBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnText: {
+    fontFamily: fonts.display,
+    fontSize: 28,
+    color: colors.ink,
+    lineHeight: 32,
+  },
   actual: {
     fontFamily: fonts.display,
     fontSize: 40,
     color: colors.ink,
+    minWidth: 100,
+    textAlign: 'center',
   },
   actualUnit: {
     fontFamily: fonts.bodyMedium,
