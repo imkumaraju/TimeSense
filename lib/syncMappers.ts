@@ -1,4 +1,10 @@
-import type { Interruption, Profile, Task, VisualStyle } from '@/types/task';
+import type {
+  Interruption,
+  Profile,
+  Routine,
+  Task,
+  VisualStyle,
+} from '@/types/task';
 
 export type RemoteTask = {
   id: string;
@@ -14,6 +20,7 @@ export type RemoteTask = {
   mood_tag: string | null;
   created_at: string;
   updated_at: string;
+  routine_id: string | null;
 };
 
 export type RemoteProfile = {
@@ -27,6 +34,7 @@ export type RemoteProfile = {
   streak_count: number | null;
   freezes_available: number | null;
   last_active_date: string | null;
+  deleted_at: string | null;
 };
 
 export type RemoteInterruption = {
@@ -34,6 +42,23 @@ export type RemoteInterruption = {
   task_id: string;
   started_at: string;
   ended_at: string | null;
+};
+
+export type RemoteRoutine = {
+  id: string;
+  user_id: string;
+  name: string | null;
+  category: string | null;
+  predicted_seconds: number;
+  visual_style: string;
+  recurrence_days: string;
+  reminder_hour: number;
+  reminder_minute: number;
+  start_date: string;
+  end_date: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export function msToIso(ms: number): string {
@@ -60,6 +85,7 @@ export function taskToRemotePayload(task: Task, userId: string) {
     mood_tag: task.moodTag,
     created_at: msToIso(task.createdAt),
     updated_at: msToIso(task.updatedAt),
+    routine_id: task.routineId,
   };
 }
 
@@ -79,6 +105,7 @@ export function remoteTaskToLocal(row: RemoteTask): Task {
     createdAt: isoToMs(row.created_at),
     updatedAt: isoToMs(row.updated_at),
     synced: true,
+    routineId: row.routine_id ?? null,
   };
 }
 
@@ -94,6 +121,7 @@ export function remoteProfileToLocal(row: RemoteProfile): Profile {
     streakCount: row.streak_count ?? 0,
     freezesAvailable: row.freezes_available ?? 2,
     lastActiveDate: row.last_active_date,
+    deletedAt: row.deleted_at ?? null,
   };
 }
 
@@ -128,5 +156,45 @@ export function profileToRemotePayload(profile: Profile) {
     streak_count: profile.streakCount,
     freezes_available: profile.freezesAvailable,
     last_active_date: profile.lastActiveDate,
+    deleted_at: profile.deletedAt,
+  };
+}
+
+export function routineToRemotePayload(routine: Routine, userId: string) {
+  return {
+    id: routine.id,
+    user_id: userId,
+    name: routine.name,
+    category: routine.category,
+    predicted_seconds: routine.predictedSeconds,
+    visual_style: routine.visualStyle,
+    recurrence_days: routine.recurrenceDays,
+    reminder_hour: routine.reminderHour,
+    reminder_minute: routine.reminderMinute,
+    start_date: routine.startDate,
+    end_date: routine.endDate,
+    active: routine.active,
+    created_at: msToIso(routine.createdAt),
+    updated_at: msToIso(routine.updatedAt),
+  };
+}
+
+export function remoteRoutineToLocal(row: RemoteRoutine): Routine {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name ?? 'Routine',
+    category: row.category as Routine['category'],
+    predictedSeconds: row.predicted_seconds,
+    visualStyle: row.visual_style as VisualStyle,
+    recurrenceDays: row.recurrence_days,
+    reminderHour: row.reminder_hour,
+    reminderMinute: row.reminder_minute,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    active: Boolean(row.active),
+    createdAt: isoToMs(row.created_at),
+    updatedAt: isoToMs(row.updated_at),
+    synced: true,
   };
 }

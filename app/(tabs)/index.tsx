@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,12 +16,14 @@ import { TsCard } from '@/components/ui/TsCard';
 import { TsChip } from '@/components/ui/TsChip';
 import { TsSectionLabel } from '@/components/ui/TsSectionLabel';
 import { colors, fonts } from '@/constants/theme';
+import { deleteRoutineFully, pauseRoutine } from '@/lib/routineNotifications';
+import { listActiveRoutinesDueToday } from '@/lib/routinesDb';
 import { getStreakProfile } from '@/lib/streakService';
 import { listRecentTasks } from '@/lib/tasksDb';
 import { formatClock } from '@/lib/timerMath';
 import { namesFromUserMetadata } from '@/lib/userNames';
 import { useAuthStore } from '@/stores/authStore';
-import type { Task } from '@/types/task';
+import type { Routine, Task } from '@/types/task';
 
 function greetingForHour(h: number): string {
   if (h < 12) return 'Good morning';
@@ -49,12 +53,14 @@ export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [routinesDueToday, setRoutinesDueToday] = useState<Routine[]>([]);
   const [streak, setStreak] = useState(0);
   const [freezes, setFreezes] = useState(0);
 
   const reload = useCallback(async () => {
     const rows = await listRecentTasks(20);
     setTasks(rows.filter((t) => t.actualSeconds != null).slice(0, 8));
+    setRoutinesDueToday(await listActiveRoutinesDueToday());
     const profile = await getStreakProfile(user?.id ?? null);
     setStreak(profile?.streakCount ?? 0);
     setFreezes(profile?.freezesAvailable ?? 0);
@@ -97,6 +103,29 @@ export default function HomeScreen() {
         <TsChip label="Custom" onPress={() => router.push('/timer/new')} />
       </View>
 
+      {routinesDueToday.length > 0 ? (
+        <>
+          <View style={styles.sectionHead}>
+            <TsSectionLabel style={{ marginBottom: 0 }}>Today&apos;s Routines</TsSectionLabel>
+            <Pressable onPress={() => router.push('/routines')} hitSlop={8}>
+              <Text style={styles.seeAll}>See all ›</Text>
+            </Pressable>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.routineScroll}>
+            {routinesDueToday.map((routine) => (
+              <RoutineCard
+                key={routine.id}
+                routine={routine}
+                onReload={reload}
+              />
+            ))}
+          </ScrollView>
+        </>
+      ) : null}
+
       <TsSectionLabel>Recent</TsSectionLabel>
 
       <FlatList
@@ -131,6 +160,63 @@ function RecentRow({ task }: { task: Task }) {
         Predicted {predicted} · Actual {actual}
       </Text>
     </TsCard>
+  );
+}
+
+function formatReminderTime(hour: number, minute: number): string {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:${String(minute).padStart(2, '0')} ${period}`;
+}
+
+function RoutineCard({
+  routine,
+  onReload,
+}: {
+  routine: Routine;
+  onReload: () => void | Promise<void>;
+}) {
+  const minutes = Math.round(routine.predictedSeconds / 60);
+  const time = formatReminderTime(routine.reminderHour, routine.reminderMinute);
+
+  const onPress = () => {
+    router.push({
+      pathname: '/timer/new',
+      params: {
+        name: routine.name,
+        category: routine.category ?? undefined,
+        minutes: String(minutes),
+        visualStyle: routine.visualStyle,
+      },
+    });
+  };
+
+  const onLongPress = () => {
+    Alert.alert(routine.name, 'Manage this routine', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Pause',
+        onPress: () => void pauseRoutine(routine.id).then(onReload),
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => void deleteRoutineFully(routine.id).then(onReload),
+      },
+    ]);
+  };
+
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress}>
+      <TsCard style={styles.routineCard}>
+        <Text style={styles.routineName} numberOfLines={1}>
+          {routine.name}
+        </Text>
+        <Text style={styles.routineMeta}>
+          {minutes} min · {time}
+        </Text>
+      </TsCard>
+    </Pressable>
   );
 }
 
@@ -174,6 +260,36 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 18,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  seeAll: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: colors.sauce,
+  },
+  routineScroll: {
+    gap: 8,
+    paddingBottom: 12,
+    paddingRight: 4,
+  },
+  routineCard: {
+    width: 128,
+  },
+  routineName: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  routineMeta: {
+    marginTop: 4,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.muted,
   },
   list: {
     paddingBottom: 24,

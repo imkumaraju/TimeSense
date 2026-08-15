@@ -18,9 +18,24 @@ function ensureAuthSession() {
 }
 
 /**
+ * URL scheme from app.config.js (timesense-dev / timesense-sys / timesense).
+ * Falls back to timesense if config is missing (should not happen in builds).
+ */
+function getAppScheme(): string {
+  const scheme = Constants.expoConfig?.scheme;
+  if (typeof scheme === 'string' && scheme.length > 0) {
+    return scheme;
+  }
+  if (Array.isArray(scheme) && typeof scheme[0] === 'string') {
+    return scheme[0];
+  }
+  return 'timesense';
+}
+
+/**
  * Deep link back into the app after Supabase finishes OAuth.
  * Expo Go must use exp:// (custom schemes are not owned by Expo Go).
- * Standalone / dev build → timesense://auth/callback
+ * Standalone / dev client → {scheme}://auth/callback (env-specific).
  */
 export function getAuthRedirectUri(): string {
   // Expo Go: Linking.createURL always yields an exp:// URL the client can open.
@@ -28,7 +43,7 @@ export function getAuthRedirectUri(): string {
     return Linking.createURL('auth/callback');
   }
   return makeRedirectUri({
-    scheme: 'timesense',
+    scheme: getAppScheme(),
     path: 'auth/callback',
   });
 }

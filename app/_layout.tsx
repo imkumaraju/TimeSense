@@ -18,6 +18,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { colors } from '@/constants/theme';
+import { cancelExpiredRoutineNotifications } from '@/lib/routineNotifications';
 import { useAuthStore } from '@/stores/authStore';
 
 export { ErrorBoundary } from 'expo-router';
@@ -56,6 +57,10 @@ export default function RootLayout() {
   useEffect(() => {
     return hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    void cancelExpiredRoutineNotifications();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -98,6 +103,22 @@ export default function RootLayout() {
           <Stack.Screen
             name="timer/complete"
             options={{ headerShown: false, animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="routines/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="routines/[id]"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="legal/privacy"
+            options={{ title: 'Privacy Policy' }}
+          />
+          <Stack.Screen
+            name="legal/terms"
+            options={{ title: 'Terms & Conditions' }}
           />
         </Stack>
       </ThemeProvider>

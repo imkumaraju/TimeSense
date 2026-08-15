@@ -117,6 +117,7 @@ Submit for store submission.
 - List of active/recent timers.
 - Big "+ New Timer" button.
 - Quick-start presets (e.g. "5 min", "25 min Pomodoro", "Custom").
+- "Today's Routines" section (see Section 9.3) sits above Recent once Routines exist.
 
 ### 3.3 New Timer / Task Setup
 - Task name (optional — allow fully anonymous "just start a timer" for zero-friction use).
@@ -125,6 +126,8 @@ Submit for store submission.
 - Timer visual style toggle: Shrinking Pie / Draining Bar / Draining Circle-ring.
 - Category tag (optional): Chores, Work, Study, Errands, Creative, Other — used later for
   calibration analytics.
+- "Repeat" toggle (see Section 9) — turns this task into a recurring Routine instead of a
+  one-off timer.
 
 ### 3.4 Active Timer (the core screen)
 - Full-screen visual: pie/bar/ring shrinking in real time, color shifting (e.g. green →
@@ -158,6 +161,11 @@ Submit for store submission.
 ---
 
 ## 4. Data Model — Cost-Conscious Strategy
+
+*Note: the `routines` and `routine_notifications` tables (Section 9.1) follow this same
+schema style and RLS pattern; they're defined alongside that feature rather than here to
+keep this section focused on the v1 core. Sync `routines` like `tasks`; never sync
+`routine_notifications` (device-local notification IDs).*
 
 **Guiding principle:** for this app, database *storage* is a non-issue (rows are tiny — a
 name, a couple of integers, a few timestamps), so 500MB free-tier storage lasts years. The
@@ -431,3 +439,122 @@ section 5's build order, not part of v1.
 - Deliver as a standard icon set (1024×1024 master, iOS/Android adaptive sizes) once final
   artwork is produced — the concepts doc version is a flat-design placeholder suitable for
   early builds and store listing drafts, not final production art.
+
+---
+
+## 9. Recurring Routines (Repeat & Reminders)
+
+A routine is a **task template that repeats on chosen days of the week**, for anywhere from a
+few weeks to indefinitely — e.g. "Leg Day" every Friday, "Biceps Day" every Wednesday. The
+reminder must fire **even if the user never opens the app again** after setting it up, so this
+is built on native OS-level repeating notifications, not anything server-driven.
+
+### 9.1 Data model
+
+Store the recurrence **rule** once — never pre-generate a row per future occurrence. "Is this
+due today?" is computed on-device each time Home loads, the same "compute, don't store"
+approach already used for Insights.
+
+```sql
+-- Local SQLite
+CREATE TABLE routines (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  name TEXT,                    -- "Leg Day"
+  category TEXT,
+  predicted_seconds INTEGER,    -- default estimate, still editable per session
+  visual_style TEXT,
+  recurrence_days TEXT,         -- comma-separated weekday ints, e.g. "5" for Friday (0=Sun..6=Sat)
+  reminder_hour INTEGER,
+  reminder_minute INTEGER,
+  start_date TEXT,
+  end_date TEXT,                 -- null = ongoing indefinitely
+  active INTEGER DEFAULT 1,      -- lets you pause without deleting
+  created_at TEXT,
+  updated_at TEXT,
+  synced INTEGER DEFAULT 0
+);
+
+-- Maps each routine to its scheduled native notifications, so they can be found/cancelled later
+CREATE TABLE routine_notifications (
+  routine_id TEXT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+  weekday INTEGER NOT NULL,
+  notification_id TEXT NOT NULL   -- the ID expo-notifications returns
+);
+```
+
+Add an optional `routine_id` column to the existing `tasks` table (both local and Supabase).
+When a routine's session is actually completed, it creates a normal `tasks` row linked back to
+its routine — so predicted-vs-actual calibration insights work **per routine** for free
+("your Leg Day sessions run about 12 minutes over") with no extra logic needed.
+
+Mirror the `routines` table structure in Supabase (same RLS pattern as `tasks` —
+`auth.uid() = user_id`) so routines sync across devices like everything else.
+`routine_notifications` stays **local-only** — notification IDs are meaningless outside the
+device that scheduled them, so this table is never synced.
+
+### 9.2 Scheduling — native repeating triggers, not a rolling window
+
+Both iOS and Android support a **repeating calendar trigger** at the OS level — "fire every
+week on this weekday at this time" — as a single scheduled entry. Once scheduled, the OS
+fires it indefinitely with **zero app involvement required afterward**, which is what makes
+"remind me even if I never reopen the app" actually work.
+
+```js
+import * as Notifications from 'expo-notifications';
+
+await Notifications.scheduleNotificationAsync({
+  content: { title: "Leg Day", body: "Time for Leg Day." },
+  trigger: {
+    type: SchedulableTriggerInputTypes.WEEKLY,
+    weekday: 6,      // Friday (1=Sun..7=Sat in expo-notifications)
+    hour: 9,
+    minute: 0,
+    repeats: true,   // OS repeats this natively — no app process needed
+  },
+});
+```
+
+For a routine spanning multiple days (e.g. Mon/Wed/Fri), schedule **one repeating trigger per
+selected weekday** rather than one complex multi-day trigger — save each returned notification
+ID into `routine_notifications` so it can be cancelled if the routine is edited, paused, or
+its end date passes.
+
+Convert stored weekdays (`0=Sun..6=Sat`) to expo-notifications (`1=Sun..7=Sat`) when scheduling.
+
+### 9.3 "Due today" logic (Home screen)
+
+On Home screen load, for each `active` routine: check whether today's weekday appears in
+`recurrence_days`, and today falls within `[start_date, end_date]` (or `end_date` is null).
+Matches render in a new **"Today's Routines"** section on Home, above the existing "Recent"
+list. Tapping one pre-fills New Timer with that routine's name, category, and predicted
+duration — one tap from there to Start. Pause/delete from the due-today row so reminders can
+be stopped without a separate manage screen.
+
+### 9.4 UI touchpoints
+
+- **New Timer setup** — add a "Repeat" toggle. Enabling it reveals a multi-select day-of-week
+  picker, a reminder time picker, and an optional end date (defaults to no end date / ongoing).
+- **Home** — new "Today's Routines" section above "Recent," populated by the logic in 9.3.
+
+### 9.5 Notification permissions
+
+Request notification permission **the moment the user first enables Repeat on a routine** —
+not proactively on app launch. Asking at the point of clear intent (they're actively setting
+up a reminder) gets meaningfully better opt-in rates than asking cold at first open.
+
+### 9.6 Known edge case: end dates aren't natively enforced
+
+OS repeating triggers don't take a "stop after this date" parameter — they repeat until
+explicitly cancelled by the app. So a routine with an `end_date` needs the app to cancel its
+`routine_notifications` entries the next time it opens **after** that date. Practical
+consequence: if someone sets an end date and then never reopens the app again, they could
+receive one stray reminder past that date. This is an acceptable v1 limitation rather than
+something worth engineering around (e.g. no need for background task infrastructure just to
+close this small gap).
+
+### 9.7 Cost/architecture note
+
+Reminders are **client-scheduled** (local OS notifications), not server-triggered push — no
+Expo push tokens or Realtime. The `routines` **rule** rows still delta-sync via Supabase like
+tasks (backup / multi-device); only `routine_notifications` stay device-local.

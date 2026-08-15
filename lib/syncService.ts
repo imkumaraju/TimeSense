@@ -13,10 +13,13 @@ import {
   profileToRemotePayload,
   remoteInterruptionToLocal,
   remoteProfileToLocal,
+  remoteRoutineToLocal,
   remoteTaskToLocal,
+  routineToRemotePayload,
   taskToRemotePayload,
   type RemoteInterruption,
   type RemoteProfile,
+  type RemoteRoutine,
   type RemoteTask,
 } from '@/lib/syncMappers';
 import {
@@ -36,9 +39,16 @@ import {
   upsertLocalProfile,
   upsertLocalTask,
 } from '@/lib/tasksDb';
+import {
+  getRoutineById,
+  listUnsyncedRoutines,
+  markRoutinesSynced,
+  upsertLocalRoutine,
+} from '@/lib/routinesDb';
 import type { Profile } from '@/types/task';
 
 const TASKS_WATERMARK_KEY = 'timesense.sync.tasks_watermark';
+const ROUTINES_WATERMARK_KEY = 'timesense.sync.routines_watermark';
 const LAST_SYNC_AT_KEY = 'timesense.sync.last_at';
 
 export type SyncResult = {
@@ -61,11 +71,31 @@ async function setWatermark(iso: string): Promise<void> {
   await AsyncStorage.setItem(TASKS_WATERMARK_KEY, iso);
 }
 
+async function getRoutinesWatermark(): Promise<string> {
+  return (
+    (await AsyncStorage.getItem(ROUTINES_WATERMARK_KEY)) ??
+    '1970-01-01T00:00:00.000Z'
+  );
+}
+
+async function setRoutinesWatermark(iso: string): Promise<void> {
+  await AsyncStorage.setItem(ROUTINES_WATERMARK_KEY, iso);
+}
+
 export async function getLastSyncedAt(): Promise<number | null> {
   const raw = await AsyncStorage.getItem(LAST_SYNC_AT_KEY);
   if (!raw) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
+}
+
+/** Clear sync watermarks (call after local wipe / account delete). */
+export async function clearSyncState(): Promise<void> {
+  await AsyncStorage.multiRemove([
+    TASKS_WATERMARK_KEY,
+    ROUTINES_WATERMARK_KEY,
+    LAST_SYNC_AT_KEY,
+  ]);
 }
 
 function displayNameFromUser(user: User): string | null {
@@ -92,7 +122,7 @@ async function ensureAndPushProfile(user: User): Promise<number> {
   const remote = await supabase
     .from('profiles')
     .select(
-      'id, display_name, username, first_name, last_name, timezone, default_visual_style, streak_count, freezes_available, last_active_date',
+      'id, display_name, username, first_name, last_name, timezone, default_visual_style, streak_count, freezes_available, last_active_date, deleted_at',
     )
     .eq('id', userId)
     .maybeSingle();
@@ -103,6 +133,11 @@ async function ensureAndPushProfile(user: User): Promise<number> {
   const fromRemote = remote.data
     ? remoteProfileToLocal(remote.data as RemoteProfile)
     : null;
+
+  // Inactive accounts must not sync; auth layer handles fresh-start / sign-out.
+  if (fromRemote?.deletedAt) {
+    throw new Error('Account is inactive');
+  }
 
   const fromAuth = namesFromUserMetadata(user.user_metadata);
 
@@ -139,6 +174,7 @@ async function ensureAndPushProfile(user: User): Promise<number> {
     streakCount: streakSource?.streakCount ?? 0,
     freezesAvailable: streakSource?.freezesAvailable ?? 2,
     lastActiveDate: streakSource?.lastActiveDate ?? null,
+    deletedAt: null,
   };
 
   await upsertLocalProfile(merged);
@@ -187,7 +223,7 @@ async function pullTasks(userId: string): Promise<{
   const { data, error } = await supabase
     .from('tasks')
     .select(
-      'id, user_id, name, description, category, predicted_seconds, actual_seconds, visual_style, started_at, ended_at, mood_tag, created_at, updated_at',
+      'id, user_id, name, description, category, predicted_seconds, actual_seconds, visual_style, started_at, ended_at, mood_tag, created_at, updated_at, routine_id',
     )
     .eq('user_id', userId)
     .gt('updated_at', watermark)
@@ -230,6 +266,56 @@ async function pullInterruptionsForTasks(taskIds: string[]): Promise<number> {
   return rows.length;
 }
 
+async function pushRoutines(userId: string): Promise<number> {
+  const unsynced = await listUnsyncedRoutines();
+  const toPush = unsynced.filter((r) => r.userId === userId || !r.userId);
+  if (toPush.length === 0) return 0;
+
+  const payload = toPush.map((r) =>
+    routineToRemotePayload({ ...r, userId }, userId),
+  );
+  const { error } = await supabase
+    .from('routines')
+    .upsert(payload, { onConflict: 'id' });
+  if (error) throw error;
+
+  await markRoutinesSynced(toPush.map((r) => r.id));
+  return toPush.length;
+}
+
+async function pullRoutines(userId: string): Promise<number> {
+  const watermark = await getRoutinesWatermark();
+  const { data, error } = await supabase
+    .from('routines')
+    .select(
+      'id, user_id, name, category, predicted_seconds, visual_style, recurrence_days, reminder_hour, reminder_minute, start_date, end_date, active, created_at, updated_at',
+    )
+    .eq('user_id', userId)
+    .gt('updated_at', watermark)
+    .order('updated_at', { ascending: true });
+
+  if (error) throw error;
+  const rows = (data ?? []) as RemoteRoutine[];
+  let maxUpdatedAt: string | null = null;
+
+  for (const remote of rows) {
+    const incoming = remoteRoutineToLocal(remote);
+    const local = await getRoutineById(incoming.id);
+    if (local && !local.synced && local.updatedAt > incoming.updatedAt) {
+      continue;
+    }
+    await upsertLocalRoutine(incoming);
+    if (!maxUpdatedAt || remote.updated_at > maxUpdatedAt) {
+      maxUpdatedAt = remote.updated_at;
+    }
+  }
+
+  if (maxUpdatedAt) {
+    await setRoutinesWatermark(maxUpdatedAt);
+  }
+  return rows.length;
+}
+
 /**
  * Push unsynced local rows, then delta-pull tasks (and related interruptions) + profile.
  * No-ops for guests / unconfigured Supabase. Dedupes concurrent calls.
@@ -256,6 +342,7 @@ export async function syncNow(): Promise<SyncResult> {
       await claimGuestTasks(user.id);
 
       const pushedProfile = await ensureAndPushProfile(user);
+      const pushedRoutines = await pushRoutines(user.id);
       const pushedTasks = await pushTasks(user.id);
       let pushedInterruptions = 0;
       try {
@@ -264,6 +351,7 @@ export async function syncNow(): Promise<SyncResult> {
         // Parent task may not be on server yet; retry next sync.
       }
 
+      const pulledRoutines = await pullRoutines(user.id);
       const { count: pulledTasks, pulledIds, maxUpdatedAt } = await pullTasks(
         user.id,
       );
@@ -282,8 +370,8 @@ export async function syncNow(): Promise<SyncResult> {
 
       return {
         ok: true,
-        pushed: pushedProfile + pushedTasks + pushedInterruptions,
-        pulled: pulledTasks + pulledInterruptions,
+        pushed: pushedProfile + pushedRoutines + pushedTasks + pushedInterruptions,
+        pulled: pulledRoutines + pulledTasks + pulledInterruptions,
       };
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Sync failed';

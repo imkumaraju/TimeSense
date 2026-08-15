@@ -125,6 +125,7 @@ Submit for store submission.
 - List of active/recent timers.
 - Big "+ New Timer" button.
 - Quick-start presets (e.g. "5 min", "25 min Pomodoro", "Custom").
+- "Today's Routines" section (see §9.3) sits above Recent once Routines exist.
 
 ### 3.3 New Timer / Task Setup
 
@@ -135,6 +136,8 @@ Submit for store submission.
 - Timer visual style toggle: **Eating Pizza** (default) / Pie / Draining Bar / Ring.
 - Category tag (optional): Chores, Work, Study, Errands, Creative, Other — used later for
   calibration analytics.
+- "Repeat" toggle (see §9) — turns this task into a recurring Routine instead of a one-off
+  timer.
 
 ### 3.4 Active Timer (the core screen)
 
@@ -172,6 +175,9 @@ Submit for store submission.
 ---
 
 ## 4. Data Model — Cost-Conscious Strategy
+
+*Note: `routines` + local-only `routine_notifications` are defined in §9. Sync `routines`
+(and `tasks.routine_id`); never sync notification IDs.*
 
 **Guiding principle:** for this app, database *storage* is a non-issue (rows are tiny — a
 name, a couple of integers, a few timestamps), so 500MB free-tier storage lasts years. The
@@ -363,8 +369,8 @@ Use this as the step-by-step implementation checklist. Complete each milestone b
 | 8 | **Task complete flow** — capture actual duration + mood, write to SQLite, push to Supabase (or queue if offline/guest). | ✅ (actual duration + push/queue; mood UI still optional) |
 | 9 | **Sync layer** — background flush of unsynced rows, delta pull-on-login / foreground (`updated_at` watermark). | ✅ |
 | 10 | **Home screen** — list + quick-start presets. | ✅ (presets + new timer; recent list still light) |
-| 11 | **Calibration/Insights screen** — query local SQLite only, compute rolling stats, render chart. | ⬜ |
-| 12 | **Settings + notifications** — account management, sync status, polish pass. | ⬜ |
+| 11 | **Calibration/Insights screen** — query local SQLite only, compute rolling stats, render chart. | ✅ (custom bars + insight cards; week/month/all) |
+| 12 | **Settings + notifications** — account management, sync status, polish pass. | ✅ (export CSV, delete/clear, milestone notifs + haptics) |
 | 13 | **EAS Build** — get a real device build on both platforms early (ideally after step 4 or 5) rather than waiting until the end — animation performance and haptics need real-device testing, not just simulator. | ⬜ |
 
 ### Step details
@@ -415,10 +421,11 @@ section 5's build order, not part of v1.
 
 | Step | Feature | Status |
 |------|---------|--------|
-| 7.1 | **Learned Defaults** | ⬜ |
-| 7.2 | **Interruption Tracking** | ⬜ |
+| 7.1 | **Learned Defaults** | ✅ (hint on New Timer by name) |
+| 7.2 | **Interruption Tracking** | ✅ (pause gaps; insights later) |
 | 7.3 | **Lock-Screen / Widget Timer** | ⬜ |
-| 7.4 | **Re-engagement / Anti-Abandonment** | ⬜ |
+| 7.4 | **Re-engagement / Anti-Abandonment** | ⬜ (streaks ✅; nudges ⬜) |
+| 7.5 | **Recurring Routines** (§9) | ⬜ → implement next |
 
 ### 7.1 Learned Defaults
 
@@ -484,5 +491,49 @@ section 5's build order, not part of v1.
 
 - Cream loaf silhouette with triangle ears on solid crust-orange; ear inners use crust-dark;
   eyes basil — palette-only, no new hues.
-- Deliver as a standard icon set (1024×1024 master + iOS/Android adaptive sizes) when final
-  artwork is ready; showcase tile is the flat placeholder until then.
+- Interim store assets live in `assets/images/` (`icon.png`, Android adaptive layers, splash);
+  replace with final marketing artwork before production store listing.
+
+---
+
+## 9. Recurring Routines (Repeat & Reminders)
+
+A routine is a **task template that repeats on chosen days of the week**, for anywhere from a
+few weeks to indefinitely — e.g. "Leg Day" every Friday. Reminders use **native OS repeating
+notifications** (not server push), so they can fire even if the app is not reopened.
+
+### 9.1 Data model
+
+Store the recurrence **rule** once — never pre-generate a row per future occurrence. "Due
+today?" is computed on-device on Home load (same compute-don't-store pattern as Insights).
+
+Local SQLite: `routines` (with `synced` / `updated_at` for delta sync) + local-only
+`routine_notifications` (`routine_id`, `weekday`, `notification_id`). Optional
+`tasks.routine_id` links completed sessions for per-routine calibration.
+
+Supabase: mirror `routines` with RLS `auth.uid() = user_id`; add `tasks.routine_id`.
+**Never** sync `routine_notifications`.
+
+Weekday storage: `0=Sun..6=Sat` in `recurrence_days`. expo-notifications weekly triggers use
+`1=Sun..7=Sat` — convert at schedule time.
+
+### 9.2 Scheduling
+
+One repeating weekly trigger per selected weekday via `expo-notifications`. Cancel /
+reschedule on edit, pause, delete, or after `end_date` on next app open (§9.6).
+
+### 9.3–9.5 UI & permissions
+
+- Home: **"Today's Routines"** above Recent; tap pre-fills New Timer; pause/delete on the row.
+- New Timer: **Repeat** toggle → days, reminder time, optional end date.
+- Request notification permission when Repeat is first enabled (not on cold launch).
+
+### 9.6 End-date edge case
+
+OS triggers do not auto-stop on `end_date`. Cancel mapped notifications the next time the app
+opens after that date. One stray reminder if the user never reopens is an accepted v1 limit.
+
+### 9.7 Cost note
+
+Reminders are client-scheduled. Syncing routine **rules** to Supabase is backup/multi-device
+only — no Realtime and no push infrastructure.

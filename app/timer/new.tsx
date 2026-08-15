@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -12,6 +13,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RepeatFields, defaultEndDate, type RepeatFieldsValue } from '@/components/routines/RepeatFields';
 import { TsButton } from '@/components/ui/TsButton';
 import { TsChip } from '@/components/ui/TsChip';
 import { TsSectionLabel } from '@/components/ui/TsSectionLabel';
@@ -21,6 +23,9 @@ import {
   colors,
   fonts,
 } from '@/constants/theme';
+import { localDateString } from '@/lib/routineLogic';
+import { rescheduleRoutineNotifications } from '@/lib/routineNotifications';
+import { createRoutine } from '@/lib/routinesDb';
 import { getDefaultVisualStyle } from '@/lib/settings';
 import { createTask, listRecentTasks } from '@/lib/tasksDb';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
@@ -29,17 +34,36 @@ import type { TaskCategory, VisualStyle } from '@/types/task';
 
 export default function NewTimerScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ minutes?: string }>();
+  const params = useLocalSearchParams<{
+    minutes?: string;
+    name?: string;
+    category?: string;
+    visualStyle?: string;
+    repeat?: string;
+  }>();
   const initialMinutes = Number(params.minutes) || 25;
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(params.name ?? '');
   const [minutes, setMinutes] = useState(initialMinutes);
   const [minutesText, setMinutesText] = useState(String(initialMinutes));
   const [editingMinutes, setEditingMinutes] = useState(false);
-  const [visualStyle, setVisualStyle] = useState<VisualStyle>('pizza');
-  const [category, setCategory] = useState<TaskCategory>('chores');
+  const [visualStyle, setVisualStyle] = useState<VisualStyle>(
+    (params.visualStyle as VisualStyle) || 'pizza',
+  );
+  const [category, setCategory] = useState<TaskCategory>(
+    (params.category as TaskCategory) || 'chores',
+  );
   const [hintMinutes, setHintMinutes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [repeat, setRepeat] = useState(params.repeat === '1');
+  const [repeatFields, setRepeatFields] = useState<RepeatFieldsValue>({
+    recurrenceDays: [],
+    reminderHour: 9,
+    reminderMinute: 0,
+    endMode: 'ongoing',
+    endDate: defaultEndDate(),
+  });
 
   const start = useActiveTimerStore((s) => s.start);
   const user = useAuthStore((s) => s.user);
@@ -62,8 +86,9 @@ export default function NewTimerScreen() {
   };
 
   useEffect(() => {
+    if (params.visualStyle) return;
     void getDefaultVisualStyle().then(setVisualStyle);
-  }, []);
+  }, [params.visualStyle]);
 
   const refreshHint = useCallback(async (taskName: string) => {
     const trimmed = taskName.trim().toLowerCase();
@@ -106,6 +131,25 @@ export default function NewTimerScreen() {
     const predictedSeconds = Math.max(1, mins) * 60;
     setBusy(true);
     try {
+      if (repeat) {
+        const routine = await createRoutine({
+          name,
+          category,
+          predictedSeconds,
+          visualStyle,
+          recurrenceDays: repeatFields.recurrenceDays,
+          reminderHour: repeatFields.reminderHour,
+          reminderMinute: repeatFields.reminderMinute,
+          endDate:
+            repeatFields.endMode === 'date'
+              ? localDateString(repeatFields.endDate)
+              : null,
+          userId: user?.id ?? null,
+        });
+        await rescheduleRoutineNotifications(routine);
+        router.replace('/(tabs)');
+        return;
+      }
       const task = await createTask({
         name,
         category,
@@ -204,6 +248,22 @@ export default function NewTimerScreen() {
           <View style={{ height: 18 }} />
         )}
 
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>Repeat</Text>
+          <Switch
+            value={repeat}
+            onValueChange={setRepeat}
+            trackColor={{ false: colors.border, true: colors.basil }}
+            thumbColor={colors.cream}
+          />
+        </View>
+
+        {repeat ? (
+          <View style={styles.repeatPanel}>
+            <RepeatFields value={repeatFields} onChange={setRepeatFields} />
+          </View>
+        ) : null}
+
         <TsSectionLabel>Timer style</TsSectionLabel>
         <View style={styles.chips}>
           {STYLE_OPTIONS.map((opt) => (
@@ -232,9 +292,9 @@ export default function NewTimerScreen() {
         <View style={{ flex: 1, minHeight: 24 }} />
 
         <TsButton
-          label="Start Timer"
+          label={repeat ? 'Save Routine' : 'Start Timer'}
           block
-          disabled={busy}
+          disabled={busy || (repeat && repeatFields.recurrenceDays.length === 0)}
           onPress={() => void onStart()}
         />
       </ScrollView>
@@ -334,5 +394,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  toggleLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  repeatPanel: {
+    marginBottom: 8,
   },
 });

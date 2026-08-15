@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeSense — Routines Management UX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crust:#D98A3D; --crust-dark:#B5691F; --sauce:#C1442D; --cheese:#FFE29B; --basil:#4B7A4C;
+    --board:#241A14; --board-light:#332419; --plate:#FBF5E9; --cream:#FFF8EC; --ink:#241A14; --muted:#8A7561;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--board);
+    background-image:radial-gradient(circle at 10% 0%, rgba(217,138,61,0.07), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(75,122,76,0.09), transparent 45%);
+    color:var(--cream); font-family:'Inter',sans-serif; padding:44px 32px 90px;
+  }
+  header{max-width:960px;margin:0 auto 40px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--crust);font-weight:500;margin-bottom:10px;}
+  h1{font-family:'Fraunces',serif;font-weight:900;font-size:clamp(28px,4.4vw,44px);line-height:1.06;margin:0 0 14px;color:var(--cream);}
+  header p{font-size:15px;line-height:1.6;color:#CBB79E;max-width:680px;margin:0;}
+  .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--crust);margin:44px auto 18px;max-width:960px;}
+  .board-scroll{overflow-x:auto;padding:20px 4px 30px;}
+  .flow-row{display:flex;align-items:flex-start;gap:0;min-width:max-content;}
+  .node{display:flex;flex-direction:column;align-items:center;}
+  .arrow-connector{display:flex;flex-direction:column;align-items:center;justify-content:center;width:72px;padding-top:230px;flex-shrink:0;}
+  .arrow-connector .trigger{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-align:center;line-height:1.4;margin-bottom:6px;max-width:80px;}
+  .step-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--crust);letter-spacing:0.08em;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .step-label .n{background:var(--crust);color:var(--board);border-radius:5px;padding:1px 6px;font-weight:700;}
+  .screen-title{font-family:'Fraunces',serif;font-weight:600;font-size:14px;color:var(--cheese);margin-bottom:16px;text-align:center;max-width:236px;}
+  .phone{width:236px;height:510px;background:var(--board-light);border-radius:34px;padding:10px;box-shadow:0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(217,138,61,0.15);}
+  .screen{width:100%;height:100%;background:var(--plate);border-radius:26px;overflow:hidden;position:relative;display:flex;flex-direction:column;color:var(--ink);}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 2px;font-size:10px;font-weight:600;}
+  .statusbar .icons{display:flex;gap:3px;align-items:center;}
+  .statusbar .icons div{width:9px;height:6px;background:currentColor;border-radius:1px;}
+  .screen-content{flex:1;padding:12px 16px 14px;display:flex;flex-direction:column;overflow:hidden;}
+  .app-header{font-family:'Fraunces',serif;font-weight:700;font-size:14px;margin:2px 0 3px;}
+  .app-sub{font-size:9.5px;color:var(--muted);margin-bottom:8px;}
+  .field{background:var(--cream);border:1px solid #E7D9C3;border-radius:10px;padding:8px 10px;font-size:10px;color:var(--muted);margin-bottom:8px;}
+  .btn{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;padding:9px 14px;border-radius:999px;border:none;text-align:center;}
+  .btn-primary{background:var(--sauce);color:var(--cream);}
+  .btn-outline{background:transparent;border:1px solid var(--crust-dark);color:var(--crust-dark);}
+  .btn-danger{background:transparent;border:1px solid var(--sauce);color:var(--sauce);}
+  .btn-block{width:100%;display:block;}
+  .card{background:var(--cream);border-radius:12px;padding:10px 11px;margin-bottom:8px;border:1px solid #EFE2CC;}
+  .row-card{display:flex;justify-content:space-between;align-items:center;background:var(--cream);border:1px solid #E7D9C3;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+  .row-label{font-size:11px;font-weight:600;}
+  .row-action{font-size:10px;font-weight:700;color:var(--sauce);}
+  .chevron{color:var(--muted);font-size:12px;}
+  .back{font-size:10.5px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:3px;}
+  .see-all{font-size:9.5px;font-weight:700;color:var(--sauce);}
+  .section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .routine-scroll{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;}
+  .routine-chip-card{flex-shrink:0;width:96px;background:var(--cream);border:1px solid #EFE2CC;border-radius:12px;padding:8px;}
+  .routine-chip-card .icon{width:24px;height:24px;border-radius:7px;background:var(--crust);margin-bottom:5px;display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .routine-chip-card .name{font-size:9px;font-weight:700;}
+  .routine-chip-card .meta{font-size:7.5px;color:var(--muted);margin-top:1px;}
+
+  /* my-routines list */
+  .rlist-card{background:var(--cream);border:1px solid #EFE2CC;border-radius:12px;padding:10px 11px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;}
+  .rlist-icon{width:30px;height:30px;border-radius:9px;background:var(--crust);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;}
+  .rlist-body{flex:1;min-width:0;}
+  .rlist-name{font-size:11.5px;font-weight:700;color:var(--ink);}
+  .rlist-meta{font-size:9px;color:var(--muted);margin-top:2px;}
+  .rlist-days{display:flex;gap:3px;margin-top:5px;}
+  .rlist-day{width:15px;height:15px;border-radius:50%;font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center;background:#EFE2CC;color:var(--muted);}
+  .rlist-day.active{background:var(--crust);color:var(--board);}
+  .rlist-badge{font-size:7.5px;font-weight:700;padding:2px 6px;border-radius:99px;flex-shrink:0;white-space:nowrap;}
+  .rlist-badge.active{background:rgba(75,122,76,0.15);color:var(--basil);}
+  .rlist-badge.paused{background:rgba(138,117,97,0.15);color:var(--muted);}
+
+  /* action sheet */
+  .sheet-wrap{position:absolute;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:flex-end;z-index:5;}
+  .sheet{width:100%;background:var(--cream);border-radius:16px 16px 0 0;padding:14px 16px 18px;}
+  .sheet-title{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:10px;text-align:center;}
+  .sheet-item{padding:10px 4px;font-size:11px;font-weight:600;color:var(--ink);border-top:1px solid #EFE2CC;text-align:center;}
+  .sheet-item.danger{color:var(--sauce);}
+  .sheet-item.cancel{color:var(--muted);}
+
+  .toggle-row{display:flex;justify-content:space-between;align-items:center;background:var(--cream);border:1px solid #E7D9C3;border-radius:10px;padding:9px 11px;margin-bottom:10px;}
+  .switch{width:28px;height:15px;border-radius:99px;position:relative;flex-shrink:0;}
+  .switch.on{background:var(--basil);} .switch.off{background:#DDD0BC;}
+  .switch .knob{width:11px;height:11px;border-radius:50%;background:var(--cream);position:absolute;top:2px;}
+  .switch.on .knob{right:2px;} .switch.off .knob{left:2px;}
+  .day-row{display:flex;gap:4px;margin-bottom:10px;}
+  .day-chip{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;background:var(--cream);border:1px solid #E7D9C3;color:var(--muted);}
+  .day-chip.active{background:var(--crust);border-color:var(--crust);color:var(--board);}
+
+  .detail-panels{max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:760px){.detail-panels{grid-template-columns:1fr;}}
+  .detail-panel{background:var(--board-light);border:1px solid rgba(217,138,61,0.18);border-radius:18px;padding:22px;}
+  .detail-panel h3{font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0 0 8px;color:var(--cream);}
+  .detail-panel p{font-size:12.5px;color:#C7B39B;line-height:1.65;margin:0 0 12px;}
+  .detail-panel ul{margin:0;padding-left:18px;font-size:12px;color:#C7B39B;line-height:1.85;}
+  .detail-panel ul b{color:var(--cheese);}
+  .detail-panel code{background:rgba(217,138,61,0.14);color:var(--cheese);padding:1px 5px;border-radius:4px;font-size:11px;}
+
+  /* timeline diagram */
+  .timeline{position:relative;height:64px;margin:10px 0 6px;}
+  .timeline .track{position:absolute;top:28px;left:0;right:0;height:2px;background:rgba(217,138,61,0.3);}
+  .timeline .point{position:absolute;top:20px;width:16px;height:16px;border-radius:50%;transform:translateX(-50%);}
+  .timeline .point.now{background:var(--cheese);}
+  .timeline .point.fire{background:var(--basil);}
+  .timeline .point.skip{background:var(--sauce);opacity:0.5;}
+  .timeline .label{position:absolute;top:44px;font-size:9px;color:#C7B39B;transform:translateX(-50%);white-space:nowrap;text-align:center;}
+  .timeline .tlabel{position:absolute;top:0;font-size:9px;font-weight:700;transform:translateX(-50%);white-space:nowrap;}
+
+  footer{max-width:960px;margin:52px auto 0;font-size:13px;color:#9B8067;line-height:1.75;border-top:1px solid rgba(217,138,61,0.18);padding-top:26px;}
+  footer strong{color:var(--cheese);}
+  footer h4{font-family:'Fraunces',serif;color:var(--cheese);font-weight:600;font-size:15px;margin:20px 0 6px;}
+  footer code{background:rgba(217,138,61,0.14);color:var(--cheese);padding:1px 5px;border-radius:4px;font-size:12px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">TimeSense — Routines management, UX plan</div>
+  <h1>Finding, revisiting, and<br>editing a routine after creation.</h1>
+  <p>Today, once a routine is saved there's nowhere to see the full list — only routines
+  due <em>today</em> surface on Home. This adds a "My Routines" screen reachable from two
+  places, plus the ability to pause, delete, or edit an existing routine. It also walks
+  through exactly when the OS reminder fires relative to when you save a routine.</p>
+</header>
+
+<div class="section-label">Entry points — two ways in</div>
+<div class="board-scroll">
+  <div class="flow-row">
+
+    <div class="node">
+      <div class="step-label"><span class="n">A</span>HOME</div>
+      <div class="screen-title">"See all" next to Today's Routines</div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+        <div class="screen-content">
+          <div class="app-header">Good morning, Raju</div>
+          <div class="app-sub" style="margin-bottom:8px;">3-day streak</div>
+          <div class="section-head">
+            <div class="app-sub" style="margin:0;">TODAY'S ROUTINES</div>
+            <div class="see-all">See all ›</div>
+          </div>
+          <div class="routine-scroll">
+            <div class="routine-chip-card"><div class="icon">🦵</div><div class="name">Leg Day</div><div class="meta">45 min · 9:00 AM</div></div>
+            <div class="routine-chip-card"><div class="icon">📖</div><div class="name">Reading</div><div class="meta">20 min · 8:00 PM</div></div>
+          </div>
+          <div class="app-sub" style="margin-bottom:6px;">RECENT</div>
+          <div class="card"><div style="font-size:10px;font-weight:700;">Email inbox</div></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="arrow-connector">
+      <div class="trigger">or, from<br>Settings</div>
+      <svg width="56" height="20" viewBox="0 0 60 20"><path d="M0 10 H50" stroke="#B5691F" stroke-width="2"/><path d="M44 4 L54 10 L44 16" fill="none" stroke="#B5691F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <div class="node">
+      <div class="step-label"><span class="n">B</span>SETTINGS</div>
+      <div class="screen-title">Always available, even with zero due today</div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+        <div class="screen-content">
+          <div class="app-header">Settings</div>
+          <div class="app-sub" style="margin:8px 0 6px;">ACCOUNT</div>
+          <div class="row-card"><div class="row-label">imkumaraju@gmail.com</div><div class="row-action">Sign out</div></div>
+          <div class="app-sub" style="margin:8px 0 6px;">TIMER</div>
+          <div class="row-card"><div class="row-label">Streak</div><div style="font-size:10px;color:var(--muted);">3-day</div></div>
+          <div class="row-card" style="border-color:var(--crust);border-width:1.5px;">
+            <div class="row-label">Routines</div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:9px;color:var(--muted);">4 active</span>
+              <span class="chevron">›</span>
+            </div>
+          </div>
+          <div class="row-card"><div class="row-label">Default style</div><div style="font-size:10px;color:var(--muted);">Radial ›</div></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="arrow-connector">
+      <div class="trigger">tap<br>either</div>
+      <svg width="56" height="20" viewBox="0 0 60 20"><path d="M0 10 H50" stroke="#B5691F" stroke-width="2"/><path d="M44 4 L54 10 L44 16" fill="none" stroke="#B5691F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <div class="node">
+      <div class="step-label"><span class="n">C</span>MY ROUTINES</div>
+      <div class="screen-title">Every routine, active or paused — not just today's</div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+        <div class="screen-content">
+          <div class="back">‹ Back</div>
+          <div class="app-header" style="margin-bottom:10px;">My Routines</div>
+
+          <div class="rlist-card">
+            <div class="rlist-icon">🦵</div>
+            <div class="rlist-body">
+              <div class="rlist-name">Leg Day</div>
+              <div class="rlist-meta">45 min · 9:00 AM</div>
+              <div class="rlist-days">
+                <div class="rlist-day">S</div><div class="rlist-day">M</div><div class="rlist-day">T</div>
+                <div class="rlist-day">W</div><div class="rlist-day">T</div><div class="rlist-day active">F</div>
+                <div class="rlist-day">S</div>
+              </div>
+            </div>
+            <div class="rlist-badge active">Active</div>
+          </div>
+
+          <div class="rlist-card">
+            <div class="rlist-icon">📖</div>
+            <div class="rlist-body">
+              <div class="rlist-name">Reading</div>
+              <div class="rlist-meta">20 min · 8:00 PM</div>
+              <div class="rlist-days">
+                <div class="rlist-day active">S</div><div class="rlist-day active">M</div><div class="rlist-day active">T</div>
+                <div class="rlist-day active">W</div><div class="rlist-day active">T</div><div class="rlist-day active">F</div>
+                <div class="rlist-day active">S</div>
+              </div>
+            </div>
+            <div class="rlist-badge active">Active</div>
+          </div>
+
+          <div class="rlist-card" style="opacity:0.55;">
+            <div class="rlist-icon" style="background:var(--muted);">🧹</div>
+            <div class="rlist-body">
+              <div class="rlist-name">Tidy desk</div>
+              <div class="rlist-meta">10 min · 6:30 PM · ends Sep 1</div>
+              <div class="rlist-days">
+                <div class="rlist-day active">S</div><div class="rlist-day">M</div><div class="rlist-day">T</div>
+                <div class="rlist-day">W</div><div class="rlist-day">T</div><div class="rlist-day">F</div>
+                <div class="rlist-day">S</div>
+              </div>
+            </div>
+            <div class="rlist-badge paused">Paused</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="arrow-connector">
+      <div class="trigger">tap a<br>card</div>
+      <svg width="56" height="20" viewBox="0 0 60 20"><path d="M0 10 H50" stroke="#B5691F" stroke-width="2"/><path d="M44 4 L54 10 L44 16" fill="none" stroke="#B5691F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <div class="node">
+      <div class="step-label"><span class="n">D</span>EDIT ROUTINE</div>
+      <div class="screen-title">Same Repeat panel from New Timer, pre-filled</div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+        <div class="screen-content">
+          <div class="back">‹ Back</div>
+          <div class="app-header">Edit routine</div>
+          <div class="field">Leg Day</div>
+          <div class="app-sub" style="margin:2px 0 6px;">PREDICTED DURATION</div>
+          <div style="text-align:center;font-family:'Fraunces',serif;font-weight:700;font-size:20px;margin-bottom:8px;">45<span style="font-size:9px;font-weight:500;color:var(--muted);"> min</span></div>
+          <div class="app-sub" style="margin-bottom:5px;">ON THESE DAYS</div>
+          <div class="day-row">
+            <div class="day-chip">S</div><div class="day-chip">M</div><div class="day-chip">T</div>
+            <div class="day-chip">W</div><div class="day-chip">T</div><div class="day-chip active">F</div>
+            <div class="day-chip">S</div>
+          </div>
+          <div class="app-sub" style="margin-bottom:5px;">REMINDER TIME</div>
+          <div class="field">🕘 9:00 AM</div>
+          <div style="flex:1;"></div>
+          <div class="btn btn-primary btn-block" style="margin-bottom:7px;">Save Changes</div>
+          <div class="btn btn-outline btn-block" style="margin-bottom:7px;">Pause Routine</div>
+          <div class="btn btn-danger btn-block">Delete Routine</div>
+        </div>
+      </div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section-label">Quick actions — without opening Edit</div>
+<div class="board-scroll">
+  <div class="flow-row">
+    <div class="node">
+      <div class="step-label"><span class="n">E</span>LONG-PRESS / ⋯</div>
+      <div class="screen-title">Pause or delete straight from the list</div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><div class="icons"><div></div><div></div><div></div></div></div>
+        <div class="screen-content" style="filter:blur(1.5px);opacity:0.6;">
+          <div class="app-header">My Routines</div>
+          <div class="rlist-card"><div class="rlist-icon">🦵</div><div class="rlist-body"><div class="rlist-name">Leg Day</div></div></div>
+        </div>
+        <div class="sheet-wrap">
+          <div class="sheet">
+            <div class="sheet-title">Leg Day</div>
+            <div class="sheet-item">Edit</div>
+            <div class="sheet-item">Pause</div>
+            <div class="sheet-item danger">Delete</div>
+            <div class="sheet-item cancel">Cancel</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">When does the reminder actually fire?</div>
+<div class="detail-panels">
+  <div class="detail-panel" style="grid-column:1 / -1;">
+    <h3>Same-day save, time still ahead — fires today</h3>
+    <div class="timeline">
+      <div class="track"></div>
+      <div class="point now" style="left:18%;"></div>
+      <div class="tlabel" style="left:18%;color:var(--cheese);">Save routine — 2:00 PM</div>
+      <div class="point fire" style="left:70%;"></div>
+      <div class="tlabel" style="left:70%;color:var(--basil);">Reminder fires — today, 9:00 PM</div>
+    </div>
+    <p style="margin-top:14px;">A <code>WEEKLY</code> <code>expo-notifications</code> trigger computes its next
+    firing forward from the moment it's scheduled. If today is a selected day and the reminder
+    time hasn't passed yet, that's the first firing — no waiting a week.</p>
+  </div>
+
+  <div class="detail-panel" style="grid-column:1 / -1;">
+    <h3>Same-day save, time already passed — skips to next week</h3>
+    <div class="timeline">
+      <div class="track"></div>
+      <div class="point skip" style="left:15%;"></div>
+      <div class="tlabel" style="left:15%;color:#C7B39B;">9:00 AM (missed)</div>
+      <div class="point now" style="left:35%;"></div>
+      <div class="tlabel" style="left:35%;color:var(--cheese);">Save routine — 2:00 PM</div>
+      <div class="point fire" style="left:88%;"></div>
+      <div class="tlabel" style="left:88%;color:var(--basil);">Reminder fires — next Friday, 9:00 AM</div>
+    </div>
+    <p style="margin-top:14px;">It never fires "late" the same day to make up a missed time — the trigger
+    only looks forward. If the reminder time for today has already gone by when you hit Save, the
+    routine still shows correctly under Today's Routines (that's a separate, on-device
+    <code>isDueOnDate</code> check, not tied to the notification), but the OS reminder itself
+    waits for the next matching weekday.</p>
+    <ul>
+      <li><b>Practical effect:</b> setting up "Leg Day, Friday 9 AM" at 2 PM on a Friday means
+      you won't get pinged today — only starting next Friday. The card is still visible and
+      tappable on Home today, it just won't nudge you.</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  <strong>Implementation notes</strong> — for whoever builds this next:
+  <ul style="padding-left:18px;">
+    <li><code>lib/routinesDb.ts</code> already has <code>listRoutines()</code> (all routines,
+    any day/active state) — the list screen is a straight read, no new query needed.</li>
+    <li>No <code>updateRoutine()</code> exists yet — edits currently only happen through
+    <code>setRoutineActive()</code> (pause/resume). Editing name/days/time/duration needs a new
+    function in <code>routinesDb.ts</code> that patches the row, bumps <code>updated_at</code>,
+    sets <code>synced = false</code>, and calls <code>rescheduleRoutineNotifications()</code>
+    again afterward (cancels the old weekly triggers, schedules new ones from scratch — there's
+    no partial-update path for OS-scheduled notifications).</li>
+    <li>Suggested routes: <code>app/routines/index.tsx</code> (list, screen C) and
+    <code>app/routines/[id].tsx</code> or reuse <code>app/timer/new.tsx</code>'s Repeat panel
+    in an "edit mode" (screen D) — the day-chip / time-picker / segmented-control components
+    built for New Timer's Repeat toggle are directly reusable here.</li>
+    <li>Entry points: a "See all ›" link next to the "Today's Routines" label in
+    <code>app/(tabs)/index.tsx</code>, and a "Routines" row in the Timer section of
+    <code>app/(tabs)/settings.tsx</code> — both push to the same list screen.</li>
+    <li>Delete already exists (<code>deleteRoutineFully</code> in
+    <code>lib/routineNotifications.ts</code>) — reuse as-is for screen D's Delete button and
+    the quick-action sheet.</li>
+  </ul>
+</footer>
+
+</body>
+</html>

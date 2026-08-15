@@ -1,0 +1,37 @@
+name: Keep-alive (sys / production Supabase)
+
+# Free Supabase projects pause after ~7 days idle. Sys holds real user data, so this
+# pings it more often than strictly required to leave margin for a missed run.
+on:
+  schedule:
+    - cron: "17 6 * * 1,4" # Mon + Thu 06:17 UTC — at least twice a week
+  workflow_dispatch: {}
+
+concurrency:
+  group: keepalive-sys
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping sys REST endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl tasks table
+        env:
+          SUPABASE_SYS_URL: ${{ secrets.SUPABASE_SYS_URL }}
+          SUPABASE_SYS_ANON_KEY: ${{ secrets.SUPABASE_SYS_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_SYS_URL" ] || [ -z "$SUPABASE_SYS_ANON_KEY" ]; then
+            echo "::error::SUPABASE_SYS_URL / SUPABASE_SYS_ANON_KEY repo secrets are not set."
+            exit 1
+          fi
+          status=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            "$SUPABASE_SYS_URL/rest/v1/tasks?select=id&limit=1" \
+            -H "apikey: $SUPABASE_SYS_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SYS_ANON_KEY")
+          echo "HTTP $status"
+          cat /tmp/body.json
+          if [ "$status" -ge 400 ]; then
+            echo "::error::Keep-alive ping failed with HTTP $status"
+            exit 1
+          fi
