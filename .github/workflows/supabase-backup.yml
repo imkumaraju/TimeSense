@@ -45,7 +45,9 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges -f backup.sql
+          # Call the versioned binary directly — the runner's preinstalled pg_dump 16
+          # otherwise shadows the PGDG postgresql-client-17 package on PATH.
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges -f backup.sql
 
       - name: Encrypt dump
         env:
