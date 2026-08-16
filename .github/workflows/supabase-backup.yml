@@ -1,0 +1,80 @@
+name: Supabase backup (sys / production)
+
+# Free Supabase tier has no automatic backups or point-in-time recovery.
+# This runs a nightly pg_dump against sys (production), encrypts it, and
+# uploads it to Cloudflare R2 (S3-compatible, 10GB free, no egress fees).
+# See RUNBOOK.md for the restore procedure and one-time setup steps.
+on:
+  schedule:
+    - cron: "11 5 * * *" # 05:11 UTC daily
+  workflow_dispatch: {}
+
+concurrency:
+  group: supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump, encrypt, upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        run: |
+          missing=()
+          [ -z "${{ secrets.SUPABASE_DB_URL }}" ] && missing+=(SUPABASE_DB_URL)
+          [ -z "${{ secrets.R2_ACCESS_KEY_ID }}" ] && missing+=(R2_ACCESS_KEY_ID)
+          [ -z "${{ secrets.R2_SECRET_ACCESS_KEY }}" ] && missing+=(R2_SECRET_ACCESS_KEY)
+          [ -z "${{ secrets.R2_BUCKET }}" ] && missing+=(R2_BUCKET)
+          [ -z "${{ secrets.R2_ENDPOINT }}" ] && missing+=(R2_ENDPOINT)
+          [ -z "${{ secrets.BACKUP_ENCRYPTION_KEY }}" ] && missing+=(BACKUP_ENCRYPTION_KEY)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repo secrets: ${missing[*]}. See RUNBOOK.md for setup."
+            exit 1
+          fi
+
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges -f backup.sql
+
+      - name: Encrypt dump
+        env:
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+        run: |
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+            --passphrase "$BACKUP_ENCRYPTION_KEY" \
+            -o backup.sql.gpg backup.sql
+          rm backup.sql
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          filename="supabase-sys-$(date -u +%Y-%m-%dT%H-%M-%SZ).sql.gpg"
+          pip install --quiet awscli
+          aws s3 cp backup.sql.gpg "s3://$R2_BUCKET/$filename" \
+            --endpoint-url "$R2_ENDPOINT"
+          echo "Uploaded $filename"
+
+      - name: Prune backups older than 30 days
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          cutoff=$(date -u -d '30 days ago' +%Y-%m-%d)
+          aws s3api list-objects-v2 --bucket "$R2_BUCKET" --endpoint-url "$R2_ENDPOINT" \
+            --query "Contents[?LastModified<'${cutoff}'].Key" --output text | \
+            tr '\t' '\n' | while read -r key; do
+              [ -z "$key" ] && continue
+              echo "Deleting stale backup: $key"
+              aws s3 rm "s3://$R2_BUCKET/$key" --endpoint-url "$R2_ENDPOINT"
+            done

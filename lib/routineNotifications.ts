@@ -96,14 +96,10 @@ export async function deleteRoutineFully(routineId: string): Promise<void> {
   await cancelRoutineNotifications(routineId);
   const { deleteRoutineLocal } = await import('@/lib/routinesDb');
   await deleteRoutineLocal(routineId);
-  try {
-    const { isSupabaseConfigured, supabase } = await import('@/lib/supabase');
-    if (isSupabaseConfigured) {
-      await supabase.from('routines').delete().eq('id', routineId);
-    }
-  } catch {
-    // best-effort remote delete
-  }
+  const { syncNow } = await import('@/lib/syncService');
+  void syncNow().catch(() => {
+    // offline: soft-delete stays queued (synced=0) and pushes on reconnect
+  });
 }
 
 /** On app open: cancel notifs for routines past end_date and deactivate them. */

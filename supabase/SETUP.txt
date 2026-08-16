@@ -3,11 +3,11 @@
  *
  * 1. Create a project at https://supabase.com
  * 2. Project Settings → API: copy Project URL + anon/publishable key into `.env`
- * 3. SQL Editor → run in order:
- *      - supabase/migrations/001_tasks.sql
- *      - supabase/migrations/002_task_description.sql
- *      - supabase/migrations/003_cost_strategy_schema.sql
- *      - supabase/migrations/004_profile_names.sql  ← username / first_name / last_name
+ * 3. Apply every file in supabase/migrations/, in numeric order:
+ *      `npm run db:migrate:dev` (needs SUPABASE_DEV_DB_URL set — see
+ *      docs/DEPLOYMENT.md#database-migrations), or paste each file into SQL Editor
+ *      in order if you don't have a DB connection string handy. Never hand-edit
+ *      schema directly in the dashboard.
  * 4. Authentication → Providers: Email, Google, Apple
  *        Google scopes used by the app: openid email profile (email + name only)
  *        Apple scopes: EMAIL + FULL_NAME (name only on first authorize)
