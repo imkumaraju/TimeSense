@@ -32,8 +32,14 @@ jobs:
             exit 1
           fi
 
-      - name: Install postgresql-client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Install postgresql-client 17
+        # Ubuntu's default apt package lags Supabase's Postgres version; pg_dump refuses to
+        # dump a server newer than itself, so pull a matching client from the PGDG apt repo.
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
 
       - name: Dump database
         env:
