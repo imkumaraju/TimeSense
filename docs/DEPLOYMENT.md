@@ -313,14 +313,18 @@ Google Play only for this release. iOS/App Store/TestFlight explicitly out of sc
 
 ## Phase 6 — Ops: keep-alive + backups (you + small YAML)
 
-Free Supabase projects pause after ~7 days idle. **Sys now holds real user data — keep-alive is required, not optional.**
+Free Supabase projects pause after ~7 days idle. **Sys now holds real user data — keep-alive is required, not optional.** Dev holds no real user data, but pausing still blocks local sign-in testing, so it gets a lighter-weight ping too.
 
 **Option A — GitHub Actions** (in repo):
 
-`.github/workflows/keepalive-sys.yml` — daily `curl` to REST `tasks?select=id&limit=1` with `apikey` from GitHub secret `SUPABASE_SYS_PUBLISHABLE_KEY`.
+- `.github/workflows/keepalive-sys.yml` — pings `SUPABASE_SYS_URL` twice a week (Mon + Thu) with `SUPABASE_SYS_ANON_KEY`.
+- `.github/workflows/keepalive-dev.yml` — pings `SUPABASE_DEV_URL` once a week (Mon) with `SUPABASE_DEV_ANON_KEY`.
 
-- [ ] Repo → Settings → Secrets → Actions: add the sys key
-- [ ] Add workflow file; run once via **workflow_dispatch**
+Both curl REST `tasks?select=id&limit=1`; RLS keeps the response empty (`supabase/migrations/008_keepalive_grant.sql` grants anon SELECT for exactly this).
+
+- [ ] Repo → Settings → Secrets → Actions: add `SUPABASE_SYS_URL` / `SUPABASE_SYS_ANON_KEY` and `SUPABASE_DEV_URL` / `SUPABASE_DEV_ANON_KEY`
+- [ ] Confirm migration 008's `GRANT SELECT ON public.tasks TO anon` has been run against **both** the dev and sys projects
+- [ ] Run each workflow once via **workflow_dispatch** to confirm it succeeds
 
 **Option B — UptimeRobot** (no code): HTTP monitor every 5 min against the same REST URL + `apikey` header.
 
