@@ -1,0 +1,34 @@
+name: Migrations replay check
+
+# Verifies every file in supabase/migrations/ applies cleanly, in order, from
+# a fresh database — catches ordering bugs, syntax errors, and non-idempotent
+# DDL before they ever reach dev/sys. Uses the Supabase CLI's local stack
+# (not plain Postgres) because migrations reference auth.users / auth.uid()
+# and RLS roles that only exist in Supabase's own schema.
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
+  workflow_dispatch: {}
+
+jobs:
+  replay:
+    name: Replay migrations on a fresh local Supabase stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        run: supabase start
+
+      - name: Replay all migrations from scratch
+        run: supabase db reset
+
+      - name: Stop stack
+        if: always()
+        run: supabase stop

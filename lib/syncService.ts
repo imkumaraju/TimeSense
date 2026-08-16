@@ -175,6 +175,10 @@ async function ensureAndPushProfile(user: User): Promise<number> {
     freezesAvailable: streakSource?.freezesAvailable ?? 2,
     lastActiveDate: streakSource?.lastActiveDate ?? null,
     deletedAt: null,
+    subscriptionTier:
+      fromRemote?.subscriptionTier ?? local?.subscriptionTier ?? 'standard',
+    subscriptionExpiresAt:
+      fromRemote?.subscriptionExpiresAt ?? local?.subscriptionExpiresAt ?? null,
   };
 
   await upsertLocalProfile(merged);
@@ -288,7 +292,7 @@ async function pullRoutines(userId: string): Promise<number> {
   const { data, error } = await supabase
     .from('routines')
     .select(
-      'id, user_id, name, category, predicted_seconds, visual_style, recurrence_days, reminder_hour, reminder_minute, start_date, end_date, active, created_at, updated_at',
+      'id, user_id, name, category, predicted_seconds, visual_style, recurrence_days, reminder_hour, reminder_minute, start_date, end_date, active, created_at, updated_at, deleted_at',
     )
     .eq('user_id', userId)
     .gt('updated_at', watermark)
@@ -305,6 +309,10 @@ async function pullRoutines(userId: string): Promise<number> {
       continue;
     }
     await upsertLocalRoutine(incoming);
+    if (incoming.deletedAt && (!local || !local.deletedAt)) {
+      const { cancelRoutineNotifications } = await import('@/lib/routineNotifications');
+      await cancelRoutineNotifications(incoming.id).catch(() => {});
+    }
     if (!maxUpdatedAt || remote.updated_at > maxUpdatedAt) {
       maxUpdatedAt = remote.updated_at;
     }

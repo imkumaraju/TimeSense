@@ -54,6 +54,8 @@ type ProfileRow = {
   freezes_available: number | null;
   last_active_date: string | null;
   deleted_at: string | null;
+  subscription_tier: string | null;
+  subscription_expires_at: string | null;
 };
 
 function rowToTask(row: TaskRow): Task {
@@ -99,6 +101,8 @@ function rowToProfile(row: ProfileRow): Profile {
     freezesAvailable: row.freezes_available ?? 2,
     lastActiveDate: row.last_active_date,
     deletedAt: row.deleted_at ?? null,
+    subscriptionTier: (row.subscription_tier as Profile['subscriptionTier']) ?? 'standard',
+    subscriptionExpiresAt: row.subscription_expires_at ?? null,
   };
 }
 
@@ -150,7 +154,9 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
       streak_count INTEGER DEFAULT 0,
       freezes_available INTEGER DEFAULT 2,
       last_active_date TEXT,
-      deleted_at TEXT
+      deleted_at TEXT,
+      subscription_tier TEXT DEFAULT 'standard',
+      subscription_expires_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS interruptions (
@@ -176,7 +182,8 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
       active INTEGER NOT NULL DEFAULT 1,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0
+      synced INTEGER NOT NULL DEFAULT 0,
+      deleted_at INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS routine_notifications (
@@ -211,6 +218,9 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
   alterSafe(`ALTER TABLE profiles ADD COLUMN first_name TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN last_name TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN deleted_at TEXT`);
+  alterSafe(`ALTER TABLE profiles ADD COLUMN subscription_tier TEXT DEFAULT 'standard'`);
+  alterSafe(`ALTER TABLE profiles ADD COLUMN subscription_expires_at TEXT`);
+  alterSafe(`ALTER TABLE routines ADD COLUMN deleted_at INTEGER`);
 
   // Backfill updated_at for rows created before the cost-strategy schema.
   db.execSync(
@@ -531,8 +541,9 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
     db.runSync(
       `INSERT INTO profiles (
         id, display_name, username, first_name, last_name, timezone, default_visual_style,
-        streak_count, freezes_available, last_active_date, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        streak_count, freezes_available, last_active_date, deleted_at,
+        subscription_tier, subscription_expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         display_name = excluded.display_name,
         username = excluded.username,
@@ -543,7 +554,9 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
         streak_count = excluded.streak_count,
         freezes_available = excluded.freezes_available,
         last_active_date = excluded.last_active_date,
-        deleted_at = excluded.deleted_at`,
+        deleted_at = excluded.deleted_at,
+        subscription_tier = excluded.subscription_tier,
+        subscription_expires_at = excluded.subscription_expires_at`,
       [
         profile.id,
         profile.displayName,
@@ -556,6 +569,8 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
         profile.freezesAvailable,
         profile.lastActiveDate,
         profile.deletedAt,
+        profile.subscriptionTier,
+        profile.subscriptionExpiresAt,
       ],
     );
     return;
@@ -583,6 +598,8 @@ export async function getLocalProfile(id: string): Promise<Profile | null> {
       firstName: profile.firstName ?? null,
       lastName: profile.lastName ?? null,
       deletedAt: profile.deletedAt ?? null,
+      subscriptionTier: profile.subscriptionTier ?? 'standard',
+      subscriptionExpiresAt: profile.subscriptionExpiresAt ?? null,
     };
   } catch {
     return null;

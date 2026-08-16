@@ -29,6 +29,9 @@ import { getLastSyncedAt, syncNow } from '@/lib/syncService';
 import { getStreakProfile } from '@/lib/streakService';
 import { listRoutines } from '@/lib/routinesDb';
 import { wipeLocalData } from '@/lib/tasksDb';
+import { showManageSubscriptions } from '@/lib/purchases';
+import { useProfile } from '@/lib/useProfile';
+import { MAX_FREEZES } from '@/lib/streakLogic';
 import { useAuthStore } from '@/stores/authStore';
 import type { VisualStyle } from '@/types/task';
 
@@ -37,6 +40,7 @@ export default function SettingsScreen() {
   const mode = useAuthStore((s) => s.mode);
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
+  const { isPlus, refresh: refreshProfile } = useProfile();
 
   const [defaultStyle, setDefaultStyle] = useState<VisualStyle>('pizza');
   const [soundOn, setSoundOn] = useState(true);
@@ -50,6 +54,7 @@ export default function SettingsScreen() {
   const [freezesAvailable, setFreezesAvailable] = useState(2);
   const [routineCount, setRoutineCount] = useState(0);
   const [activeRoutineCount, setActiveRoutineCount] = useState(0);
+  const [managingSubscription, setManagingSubscription] = useState(false);
 
   const reload = useCallback(async () => {
     setDefaultStyle(await getDefaultVisualStyle());
@@ -64,7 +69,8 @@ export default function SettingsScreen() {
     if (last) {
       setSyncHint(`Last synced ${new Date(last).toLocaleString()}`);
     }
-  }, [user?.id]);
+    void refreshProfile();
+  }, [user?.id, refreshProfile]);
 
   useFocusEffect(
     useCallback(() => {
@@ -110,6 +116,20 @@ export default function SettingsScreen() {
     setDefaultStyle(style);
     await setDefaultVisualStyle(style);
     setPickingStyle(false);
+  };
+
+  const onManageSubscription = async () => {
+    setManagingSubscription(true);
+    try {
+      await showManageSubscriptions();
+    } catch (e) {
+      Alert.alert(
+        'Could not open subscription management',
+        e instanceof Error ? e.message : 'Please try again.',
+      );
+    } finally {
+      setManagingSubscription(false);
+    }
   };
 
   const onExport = async () => {
@@ -219,6 +239,36 @@ export default function SettingsScreen() {
           {freezesAvailable} available
         </Text>
       </TsCard>
+      {!isPlus ? (
+        <Pressable onPress={() => router.push('/paywall')}>
+          <TsCard style={[styles.rowCard, styles.rowCardUpsell, { marginTop: 8 }]}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.rowLabelOnDark}>Upgrade to Plus</Text>
+              <Text style={styles.rowSubOnDark}>No ads · all styles · priority sync</Text>
+            </View>
+            <Text style={styles.rowLabelOnDark}>›</Text>
+          </TsCard>
+        </Pressable>
+      ) : (
+        <TsCard style={[styles.rowCard, { marginTop: 8 }]}>
+          <Text style={styles.rowLabel}>Manage subscription</Text>
+          <Pressable onPress={() => void onManageSubscription()} disabled={managingSubscription}>
+            {managingSubscription ? (
+              <ActivityIndicator color={colors.sauce} />
+            ) : (
+              <Text style={styles.rowAction}>Manage ›</Text>
+            )}
+          </Pressable>
+        </TsCard>
+      )}
+      {!isPlus && freezesAvailable < MAX_FREEZES ? (
+        <TsCard style={[styles.rowCard, styles.rowCardDisabled, { marginTop: 8 }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={styles.rowLabelMuted}>Watch an ad for a streak freeze</Text>
+            <Text style={styles.rowSubMuted}>Coming soon</Text>
+          </View>
+        </TsCard>
+      ) : null}
       <TsCard style={[styles.rowCard, { marginTop: 8 }]}>
         <Text style={styles.rowLabel}>Default style</Text>
         <Pressable onPress={() => setPickingStyle((v) => !v)}>
@@ -235,15 +285,25 @@ export default function SettingsScreen() {
       ) : null}
       {pickingStyle ? (
         <View style={styles.chips}>
-          {STYLE_OPTIONS.map((opt) => (
-            <TsChip
-              key={opt.value}
-              label={opt.label}
-              icon={opt.icon}
-              active={defaultStyle === opt.value}
-              onPress={() => void onPickStyle(opt.value)}
-            />
-          ))}
+          {STYLE_OPTIONS.map((opt) => {
+            const locked = opt.premium && !isPlus;
+            return (
+              <TsChip
+                key={opt.value}
+                label={opt.label}
+                icon={opt.icon}
+                active={defaultStyle === opt.value}
+                locked={locked}
+                onPress={() => {
+                  if (locked) {
+                    router.push('/paywall');
+                    return;
+                  }
+                  void onPickStyle(opt.value);
+                }}
+              />
+            );
+          })}
         </View>
       ) : null}
 
@@ -341,6 +401,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  rowCardUpsell: {
+    backgroundColor: colors.crust,
+    borderColor: colors.crust,
+  },
+  rowCardDisabled: {
+    opacity: 0.6,
+  },
+  rowLabelOnDark: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.cream,
+  },
+  rowSubOnDark: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.cream,
+    opacity: 0.85,
+    marginTop: 2,
+  },
+  rowLabelMuted: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.muted,
+  },
+  rowSubMuted: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 2,
   },
   rowLabel: {
     fontFamily: fonts.body,

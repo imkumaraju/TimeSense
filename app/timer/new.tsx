@@ -28,6 +28,7 @@ import { rescheduleRoutineNotifications } from '@/lib/routineNotifications';
 import { createRoutine } from '@/lib/routinesDb';
 import { getDefaultVisualStyle } from '@/lib/settings';
 import { createTask, listRecentTasks } from '@/lib/tasksDb';
+import { useProfile } from '@/lib/useProfile';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { TaskCategory, VisualStyle } from '@/types/task';
@@ -67,6 +68,7 @@ export default function NewTimerScreen() {
 
   const start = useActiveTimerStore((s) => s.start);
   const user = useAuthStore((s) => s.user);
+  const { isPlus } = useProfile();
 
   const clampMinutes = (n: number) => Math.max(1, Math.min(240, Math.round(n)));
 
@@ -266,15 +268,25 @@ export default function NewTimerScreen() {
 
         <TsSectionLabel>Timer style</TsSectionLabel>
         <View style={styles.chips}>
-          {STYLE_OPTIONS.map((opt) => (
-            <TsChip
-              key={opt.value}
-              label={opt.label}
-              icon={opt.icon}
-              active={visualStyle === opt.value}
-              onPress={() => setVisualStyle(opt.value)}
-            />
-          ))}
+          {STYLE_OPTIONS.map((opt) => {
+            const locked = opt.premium && !isPlus;
+            return (
+              <TsChip
+                key={opt.value}
+                label={opt.label}
+                icon={opt.icon}
+                active={visualStyle === opt.value}
+                locked={locked}
+                onPress={() => {
+                  if (locked) {
+                    router.push('/paywall');
+                    return;
+                  }
+                  setVisualStyle(opt.value);
+                }}
+              />
+            );
+          })}
         </View>
 
         <TsSectionLabel>Category</TsSectionLabel>

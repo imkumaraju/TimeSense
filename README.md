@@ -19,6 +19,7 @@ npx expo start
 | `npm start` / `npx expo start` | Dev server (Expo Go or dev client) |
 | `npm test` | Jest unit tests |
 | `npm run android` / `npm run ios` | Native run via Expo |
+| `npm run db:migrate:dev` / `npm run db:migrate:prod` | Apply `supabase/migrations/*` to dev / sys — see [Database migrations](docs/DEPLOYMENT.md#database-migrations) |
 
 ### Environment
 
@@ -52,7 +53,8 @@ Guest / offline mode works without keys; cloud auth and sync need a configured S
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Multi-env EAS / Supabase / store checklist |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | Parked work (e.g. Sign in with Apple) |
 | [`docs/GITHUB_PROMOTION.md`](docs/GITHUB_PROMOTION.md) | `dev` → `sys` → `main` promote flow |
-| [`supabase/migrations/`](supabase/migrations/) | Apply `001`–`006` per Supabase env (`006` = soft-delete account) |
+| [`supabase/migrations/`](supabase/migrations/) | Schema history — apply via `npm run db:migrate:*`, never hand-edit (see [DEPLOYMENT.md](docs/DEPLOYMENT.md#database-migrations)) |
+| [`RUNBOOK.md`](RUNBOOK.md) | Supabase backup pipeline setup + restore procedure |
 
 ## Next: production ops
 

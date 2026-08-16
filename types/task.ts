@@ -40,6 +40,8 @@ export type Task = {
   routineId: string | null;
 };
 
+export type SubscriptionTier = 'standard' | 'plus';
+
 export type Profile = {
   id: string;
   displayName: string | null;
@@ -53,6 +55,9 @@ export type Profile = {
   lastActiveDate: string | null;
   /** Soft-delete marker; null means active. */
   deletedAt: string | null;
+  subscriptionTier: SubscriptionTier;
+  /** ISO date string; null means non-expiring (lifetime) or standard tier. */
+  subscriptionExpiresAt: string | null;
 };
 
 export type Interruption = {
@@ -82,6 +87,7 @@ export type Routine = {
   createdAt: number;
   updatedAt: number;
   synced: boolean;
+  deletedAt: number | null;
 };
 
 export type RoutineNotification = {
