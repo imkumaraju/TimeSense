@@ -13,18 +13,22 @@ import {
   resumeRoutine,
 } from '@/lib/routineNotifications';
 import { listRoutines } from '@/lib/routinesDb';
+import { recomputeAndWriteWidgetSnapshot } from '@/lib/widgetSnapshot';
+import { useAuthStore } from '@/stores/authStore';
 import type { Routine } from '@/types/task';
 
 export default function RoutinesScreen() {
   const insets = useSafeAreaInsets();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const userId = useAuthStore((s) => s.user?.id) ?? null;
 
   const reload = useCallback(async () => {
     const all = await listRoutines();
     all.sort((a, b) => Number(b.active) - Number(a.active));
     setRoutines(all);
-  }, []);
+    void recomputeAndWriteWidgetSnapshot(userId);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {

@@ -35,12 +35,25 @@ const NOTIF_IDS = {
 } as const;
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    // Widget-only triggers (e.g. the Last Chance mood recompute, lib/widgetSnapshot.ts) exist
+    // solely to wake the app and refresh the home screen widget — they must never surface a
+    // visible alert to the user.
+    if (notification.request.content.data?.widgetSilent === true) {
+      return {
+        shouldShowBanner: false,
+        shouldShowList: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      };
+    }
+    return {
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 /**

@@ -20,6 +20,7 @@ import { colors, fonts } from '@/constants/theme';
 import { localDateString, parseRecurrenceDays } from '@/lib/routineLogic';
 import { deleteRoutineFully, rescheduleRoutineNotifications } from '@/lib/routineNotifications';
 import { getRoutineById, updateRoutine } from '@/lib/routinesDb';
+import { recomputeAndWriteWidgetSnapshot } from '@/lib/widgetSnapshot';
 import type { Routine } from '@/types/task';
 
 function parseLocalDate(raw: string): Date {
@@ -86,6 +87,7 @@ export default function EditRoutineScreen() {
       });
       if (updated) {
         await rescheduleRoutineNotifications(updated);
+        void recomputeAndWriteWidgetSnapshot(updated.userId);
       }
       router.back();
     } catch (e) {
@@ -106,7 +108,10 @@ export default function EditRoutineScreen() {
           text: 'Delete Routine',
           style: 'destructive',
           onPress: () => {
-            void deleteRoutineFully(routine.id).then(() => router.back());
+            void deleteRoutineFully(routine.id).then(() => {
+              void recomputeAndWriteWidgetSnapshot(routine.userId);
+              router.back();
+            });
           },
         },
       ],
