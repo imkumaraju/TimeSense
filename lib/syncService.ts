@@ -6,6 +6,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/react-native';
 
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import {
@@ -59,6 +60,28 @@ export type SyncResult = {
 };
 
 let inFlight: Promise<SyncResult> | null = null;
+
+/**
+ * Postgrest/Supabase errors are Error subclasses, but some rejections (native SQLite
+ * exceptions, RN's network layer on certain Android versions) aren't real Error instances —
+ * those used to collapse to a generic "Sync failed" with no diagnostic info. Surface whatever
+ * shape shows up instead of guessing.
+ */
+function describeSyncError(e: unknown): string {
+  if (e instanceof Error) {
+    const withCode = e as Error & { code?: string; hint?: string; details?: string };
+    const parts = [e.message || e.name || 'Unknown error'];
+    if (withCode.code) parts.push(`code: ${withCode.code}`);
+    if (withCode.hint) parts.push(`hint: ${withCode.hint}`);
+    return parts.join(' — ');
+  }
+  if (typeof e === 'string') return e;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
 
 async function getWatermark(): Promise<string> {
   return (
@@ -382,7 +405,11 @@ export async function syncNow(): Promise<SyncResult> {
         pulled: pulledRoutines + pulledTasks + pulledInterruptions,
       };
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Sync failed';
+      const message = describeSyncError(e);
+      console.error('[sync] failed:', message, e);
+      Sentry.captureException(e instanceof Error ? e : new Error(message), {
+        tags: { context: 'syncNow' },
+      });
       return { ok: false, pushed: 0, pulled: 0, error: message };
     }
   })();
