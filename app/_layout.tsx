@@ -11,7 +11,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Sentry from '@sentry/react-native';
@@ -22,6 +22,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { colors } from '@/constants/theme';
 import { initPurchases, syncPurchasesIdentity } from '@/lib/purchases';
+import { ensureReentryNudge } from '@/lib/reengagementNudge';
 import { cancelExpiredRoutineNotifications } from '@/lib/routineNotifications';
 import {
   ensureLastChanceWidgetTrigger,
@@ -85,6 +86,10 @@ function RootLayout() {
   }, []);
 
   useEffect(() => {
+    void ensureReentryNudge();
+  }, []);
+
+  useEffect(() => {
     initPurchases();
   }, []);
 
@@ -107,6 +112,20 @@ function RootLayout() {
     });
     return () => sub.remove();
   }, [user?.id]);
+
+  useEffect(() => {
+    // Tapping a routine reminder deep-links into New Timer prefilled for that routine (§10.7),
+    // same destination as the widget's OPEN_URI tap. `timer/new` resolves routineId itself.
+    const openForResponse = (response: Notifications.NotificationResponse | null) => {
+      const routineId = response?.notification.request.content.data?.routineId;
+      if (typeof routineId === 'string') {
+        router.push({ pathname: '/timer/new', params: { routineId } });
+      }
+    };
+    void Notifications.getLastNotificationResponseAsync().then(openForResponse);
+    const sub = Notifications.addNotificationResponseReceivedListener(openForResponse);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {

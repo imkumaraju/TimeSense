@@ -184,12 +184,7 @@ function RoutineCard({
   const onPress = () => {
     router.push({
       pathname: '/timer/new',
-      params: {
-        name: routine.name,
-        category: routine.category ?? undefined,
-        minutes: String(minutes),
-        visualStyle: routine.visualStyle,
-      },
+      params: { routineId: routine.id },
     });
   };
 

@@ -25,6 +25,8 @@ export type WidgetSnapshot = {
   mood: WidgetMood;
   streakCount: number;
   routineName: string | null;
+  /** Paired with routineName — lets a widget tap deep-link straight into that routine's timer (§10.7). */
+  dueRoutineId: string | null;
   reminderTime: string | null;
   taskLine: string;
   subLine: string;
@@ -123,6 +125,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
       mood: 'sad',
       streakCount,
       routineName: null,
+      dueRoutineId: null,
       reminderTime: null,
       taskLine: 'Start a new streak today',
       subLine: 'Yesterday was missed',
@@ -134,6 +137,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
       mood: 'completed',
       streakCount,
       routineName: dueRoutine.name,
+      dueRoutineId: dueRoutine.id,
       reminderTime: formatReminderTime(dueRoutine.reminderHour, dueRoutine.reminderMinute),
       taskLine: `${dueRoutine.name} — done!`,
       subLine: 'See you tomorrow',
@@ -145,6 +149,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
       mood: 'happy',
       streakCount,
       routineName: dueRoutine?.name ?? null,
+      dueRoutineId: dueRoutine?.id ?? null,
       reminderTime: null,
       taskLine: `${streakCount}-day streak!`,
       subLine: 'New freeze earned',
@@ -156,6 +161,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
       mood: 'freeze',
       streakCount,
       routineName: dueRoutine?.name ?? null,
+      dueRoutineId: dueRoutine?.id ?? null,
       reminderTime: null,
       taskLine: 'A freeze covered yesterday',
       subLine: '1 freeze left',
@@ -167,6 +173,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
       mood: 'resting',
       streakCount,
       routineName: null,
+      dueRoutineId: null,
       reminderTime: null,
       taskLine: 'No routines today',
       subLine: 'Enjoy the break',
@@ -193,6 +200,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
       mood: 'worried',
       streakCount,
       routineName: dueRoutine.name,
+      dueRoutineId: dueRoutine.id,
       reminderTime: reminderTimeLabel,
       taskLine: `Streak ends in ${hoursLeft} hours!`,
       subLine: `${dueRoutine.name} not started`,
@@ -204,6 +212,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
       mood: 'alert',
       streakCount,
       routineName: dueRoutine.name,
+      dueRoutineId: dueRoutine.id,
       reminderTime: reminderTimeLabel,
       taskLine: `Don't forget: ${dueRoutine.name}`,
       subLine: `Today, ${reminderTimeLabel}`,
@@ -214,6 +223,7 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
     mood: 'calm',
     streakCount,
     routineName: dueRoutine.name,
+    dueRoutineId: dueRoutine.id,
     reminderTime: reminderTimeLabel,
     taskLine: `${dueRoutine.name} · ${reminderTimeLabel}`,
     subLine: 'Plenty of time',

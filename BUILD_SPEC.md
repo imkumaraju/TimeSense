@@ -366,7 +366,7 @@ Use this as the step-by-step implementation checklist. Complete each milestone b
 | 5 | **Active Timer screen** — wire the visual component to real timer state, add pause/resume/finish. | ✅ |
 | 6 | **Auth screens + guest mode** — sign up/log in flow, session persistence (`supabase.auth.onAuthStateChange`), and the local-only guest path. | ✅ |
 | 7 | **New Timer / task setup screen** — predicted duration input, optional name/description, save to local DB on start. | ✅ |
-| 8 | **Task complete flow** — capture actual duration + mood, write to SQLite, push to Supabase (or queue if offline/guest). | ✅ (actual duration + push/queue; mood UI still optional) |
+| 8 | **Task complete flow** — capture actual duration + mood, write to SQLite, push to Supabase (or queue if offline/guest). | ✅ |
 | 9 | **Sync layer** — background flush of unsynced rows, delta pull-on-login / foreground (`updated_at` watermark). | ✅ |
 | 10 | **Home screen** — list + quick-start presets. | ✅ (presets + new timer; recent list still light) |
 | 11 | **Calibration/Insights screen** — query local SQLite only, compute rolling stats, render chart. | ✅ (custom bars + insight cards; week/month/all) |
@@ -424,8 +424,8 @@ section 5's build order, not part of v1.
 | 7.1 | **Learned Defaults** | ✅ (hint on New Timer by name) |
 | 7.2 | **Interruption Tracking** | ✅ (pause gaps; insights later) |
 | 7.3 | **Home Screen Widget** (Chibi Tabby mood widget, §10) | ⬜ |
-| 7.4 | **Re-engagement / Anti-Abandonment** | ⬜ (streaks ✅; nudges ⬜) |
-| 7.5 | **Recurring Routines** (§9) | ⬜ → implement next |
+| 7.4 | **Re-engagement / Anti-Abandonment** | ✅ (streaks ✅; gentle re-entry nudge ✅) |
+| 7.5 | **Recurring Routines** (§9) | ✅ |
 
 ### 7.1 Learned Defaults
 
@@ -466,6 +466,17 @@ it than the other v1.5 items.
   single low-pressure notification — e.g. "no worries, want to log just one thing today?" —
   rather than guilt-driven copy. Use `expo-notifications` local scheduled notifications for
   this; no backend push infra needed for v1.5.
+
+  **Implemented:** `lib/reengagementNudge.ts`. Rather than checking `last_active_date` against
+  wall-clock time (which needs code to run while the app is closed, which Expo local
+  notifications can't do without a background task), it reschedules a single one-time
+  notification `REENTRY_NUDGE_DAYS` (3) out from *now* on every cold start/foreground
+  (`app/_layout.tsx`), keyed to a fixed identifier so each reschedule replaces the pending one
+  instead of stacking. An active user keeps pushing their own nudge further into the future by
+  opening the app; it only actually fires once nobody's opened it to reschedule it — same
+  idempotent-identifier trick as `ensureLastChanceWidgetTrigger` (§10.5a). Pure date math is
+  split into `computeReentryNudgeDate()` for unit testing without mocking
+  `expo-notifications`.
 
 ---
 
@@ -665,11 +676,22 @@ rely on a live trigger, schedule transitions in advance.
 Deep-links to the same destination as a Routine notification tap (§9): pre-filled New Timer
 for that day's due routine. If no routine is due (Rest Day), tapping opens Home instead.
 
-**Current implementation:** `widgets/StreakWidget.tsx` uses a plain `OPEN_APP` click action
-(opens Home) rather than a deep link, because routine notification taps don't deep-link either
-today — there's no `Notifications.addNotificationResponseReceivedListener` prefilling New
-Timer from a tapped reminder. True prefilled-tap behavior for both surfaces is one follow-up,
-not something to build widget-only.
+**Implemented**, both surfaces share one destination: `app/timer/new.tsx` accepts an optional
+`routineId` param and resolves it (via `getRoutineById`) into name/predicted-minutes/category/
+visual-style on mount, rather than either caller pre-computing those fields itself.
+
+- **Widget tap** — `WidgetSnapshot.dueRoutineId` (paired with `routineName`, set in every
+  branch of `computeWidgetMood`) lets `widgets/StreakWidget.tsx` build an `OPEN_URI` click
+  action to `${scheme}://timer/new?routineId=...` when a routine is due; falls back to
+  `OPEN_APP` (opens Home) on a Rest Day or if the app scheme isn't resolvable.
+- **Routine notification tap** — `rescheduleRoutineNotifications` now attaches
+  `data: { routineId }` to the scheduled notification content. `app/_layout.tsx` listens with
+  `Notifications.addNotificationResponseReceivedListener` (plus
+  `getLastNotificationResponseAsync` for the cold-start case — app was closed, tap launched
+  it) and routes to `/timer/new?routineId=...` when present.
+- Home's own due-routine cards (`RoutineCard` in `app/(tabs)/index.tsx`) were switched to the
+  same `routineId` param instead of building the prefill fields inline, so there's one prefill
+  code path instead of three.
 
 ### 10.8 Decorations
 
