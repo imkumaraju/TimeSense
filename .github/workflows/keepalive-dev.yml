@@ -1,0 +1,40 @@
+name: Keep-alive (dev Supabase)
+
+# Free Supabase projects pause after ~7 days idle. Dev holds no real user data, so a
+# once-a-week ping is enough to stop it auto-pausing between work sessions.
+on:
+  schedule:
+    - cron: "23 6 * * 1" # Mon 06:23 UTC — once a week
+  workflow_dispatch: {}
+
+concurrency:
+  group: keepalive-dev
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping dev REST endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl tasks table
+        env:
+          SUPABASE_DEV_URL: ${{ secrets.SUPABASE_DEV_URL }}
+          SUPABASE_DEV_ANON_KEY: ${{ secrets.SUPABASE_DEV_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_DEV_URL" ] || [ -z "$SUPABASE_DEV_ANON_KEY" ]; then
+            echo "::error::SUPABASE_DEV_URL / SUPABASE_DEV_ANON_KEY repo secrets are not set."
+            exit 1
+          fi
+          # anon has SELECT granted (supabase/migrations/008_keepalive_grant.sql) but RLS
+          # still restricts rows to auth.uid() = user_id, so this returns an empty array —
+          # no user data is exposed, it just proves the project responds.
+          status=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            "$SUPABASE_DEV_URL/rest/v1/tasks?select=id&limit=1" \
+            -H "apikey: $SUPABASE_DEV_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_DEV_ANON_KEY")
+          echo "HTTP $status"
+          cat /tmp/body.json
+          if [ "$status" -ge 400 ]; then
+            echo "::error::Keep-alive ping failed with HTTP $status"
+            exit 1
+          fi

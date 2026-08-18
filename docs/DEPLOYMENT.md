@@ -15,7 +15,7 @@ Use this as the ordered to-do list. Checkboxes are for you (accounts, portals, s
 | Bundle / package IDs (env-specific) | **Done** — `com.timesense.dev` (dev) / `com.timesense.sys` (**production**) via `APP_ENV` |
 | URL schemes (env-specific) + path `/auth/callback` | **Done** — `timesense-dev` / `timesense-sys` (`app.config.js`, `lib/oauth.ts`) |
 | `eas.json` profiles: `development`, `preview` (=production), `production` (dormant) | **Done** — `APP_ENV` per profile; preview now builds **app-bundle** for Play Store |
-| Migrations `001`–`007` in repo | Done — apply per env via SQL Editor (see promotion guide) |
+| Migrations in [`supabase/migrations/`](../supabase/migrations/) | Done — apply per env via `npm run db:migrate:*` (see [Database migrations](#database-migrations)) |
 | Local `.env` + `.env.example` (`EXPO_PUBLIC_SUPABASE_URL` + `KEY`/`ANON_KEY`) | Done |
 | Social auth setup docs (`supabase/SETUP.txt`, `SOCIAL_AUTH_SETUP.txt`) | Done — update per env |
 | GitHub remote `imkumaraju/TimeSense` | Done |
@@ -113,15 +113,15 @@ Do this on **each** project after it exists. Existing project `pwgspnqodaokmkoyg
 
 #### 1. Schema (every project)
 
-- [ ] SQL Editor — run in order (same files; **do not hand-edit schema**):
-  - `supabase/migrations/001_tasks.sql`
-  - `supabase/migrations/002_task_description.sql`
-  - `supabase/migrations/003_cost_strategy_schema.sql`
-  - `supabase/migrations/004_profile_names.sql`
-  - `supabase/migrations/005_delete_own_account.sql`
-  - `supabase/migrations/006_soft_delete_account.sql`
-  - `supabase/migrations/007_routines.sql`
-- [ ] Later changes: `supabase migration new …` → commit → apply in SQL Editor on the env matching the branch
+- [ ] Apply every file in [`supabase/migrations/`](../supabase/migrations/) in numeric order (`001`
+      through the current head — see the directory for the full, up-to-date list). **Never
+      hand-edit schema in the dashboard** — every change is a committed migration file, full stop.
+- [ ] Preferred: `npm run db:migrate:dev` / `npm run db:migrate:prod` (wraps `supabase db push`,
+      requires `SUPABASE_DEV_DB_URL` / `SUPABASE_SYS_DB_URL` set locally — see
+      [Database migrations](#database-migrations) below). Falls back to pasting the same files
+      into SQL Editor, in order, if you don't have a DB connection string handy.
+- [ ] Later changes: `supabase migration new …` → commit → apply via the script above (or SQL
+      Editor) on the env matching the branch
 
 #### 2. Auth → URL Configuration
 
@@ -183,7 +183,7 @@ Copy **Project URL** + **anon key** into `.env.*` / EAS env for that profile onl
 
 ## Order of operations (OAuth-safe)
 
-1. [ ] Confirm sys Supabase has migrations `001`–`007` applied.
+1. [ ] Confirm sys Supabase has every file in `supabase/migrations/` applied (`npm run db:migrate:prod` or check via dashboard).
 2. [ ] Google Cloud: create two **Web** OAuth clients (dev, sys); add each project's `…/auth/v1/callback` redirect URI.
 3. [ ] Supabase per project: URL Configuration (Site URL + redirects) → Google provider (that env's Web client) → Apple Client IDs.
 4. [ ] Publish the Google OAuth consent screen to production before real users sign in on sys.
@@ -227,10 +227,10 @@ Copy **Project URL** + **anon key** into `.env.*` / EAS env for that profile onl
 | Project | Ref | Status |
 |---------|-----|--------|
 | timesense (dev) | `pwgspnqodaokmkoyghcu` | Live |
-| timesense-sys | `uihapuiivlrpfxftyivo` | Live — **this is production**; confirm migrations `001`–`007` applied |
+| timesense-sys | `uihapuiivlrpfxftyivo` | Live — **this is production**; confirm all migrations applied |
 
 1. [ ] Settings → API: copy **Project URL** + **anon/publishable key**
-2. [ ] Run migrations `001`–`007` in SQL Editor if not already applied (never hand-edit schema)
+2. [ ] Run `npm run db:migrate:prod` (or apply `supabase/migrations/*` in SQL Editor, in order, if not already applied) — never hand-edit schema
 3. [ ] Auth providers + URL Configuration (per OAuth checklist)
 
 Local env files (gitignored):
@@ -313,25 +313,67 @@ Google Play only for this release. iOS/App Store/TestFlight explicitly out of sc
 
 ## Phase 6 — Ops: keep-alive + backups (you + small YAML)
 
-Free Supabase projects pause after ~7 days idle. **Sys now holds real user data — keep-alive is required, not optional.**
+Free Supabase projects pause after ~7 days idle. **Sys now holds real user data — keep-alive is required, not optional.** Dev holds no real user data, but pausing still blocks local sign-in testing, so it gets a lighter-weight ping too.
 
 **Option A — GitHub Actions** (in repo):
 
-`.github/workflows/keepalive-sys.yml` — daily `curl` to REST `tasks?select=id&limit=1` with `apikey` from GitHub secret `SUPABASE_SYS_PUBLISHABLE_KEY`.
+- `.github/workflows/keepalive-sys.yml` — pings `SUPABASE_SYS_URL` twice a week (Mon + Thu) with `SUPABASE_SYS_ANON_KEY`.
+- `.github/workflows/keepalive-dev.yml` — pings `SUPABASE_DEV_URL` once a week (Mon) with `SUPABASE_DEV_ANON_KEY`.
 
-- [ ] Repo → Settings → Secrets → Actions: add the sys key
-- [ ] Add workflow file; run once via **workflow_dispatch**
+Both curl REST `tasks?select=id&limit=1`; RLS keeps the response empty (`supabase/migrations/008_keepalive_grant.sql` grants anon SELECT for exactly this).
+
+- [ ] Repo → Settings → Secrets → Actions: add `SUPABASE_SYS_URL` / `SUPABASE_SYS_ANON_KEY` and `SUPABASE_DEV_URL` / `SUPABASE_DEV_ANON_KEY`
+- [ ] Confirm migration 008's `GRANT SELECT ON public.tasks TO anon` has been run against **both** the dev and sys projects
+- [ ] Run each workflow once via **workflow_dispatch** to confirm it succeeds
 
 **Option B — UptimeRobot** (no code): HTTP monitor every 5 min against the same REST URL + `apikey` header.
 
-**Backups (sys):**
+**Backups (sys):** automated — `.github/workflows/supabase-backup.yml` runs nightly, dumps sys,
+encrypts with GPG, uploads to Cloudflare R2, prunes anything older than 30 days. One-time setup
+(R2 bucket, GPG key, GitHub secrets) and the restore procedure are in [`../RUNBOOK.md`](../RUNBOOK.md).
+
+- [ ] Complete the one-time setup in `RUNBOOK.md`
+- [ ] Run the workflow once via **workflow_dispatch** and confirm an object lands in R2
+- [ ] Test one restore against a throwaway local Postgres before relying on this
+- [ ] Upgrade to Supabase Pro when: storage ~500MB, ~50K MAU, or a real backup/SLA incident — at
+      that point Supabase's own PITR becomes the primary recovery path and this workflow can drop
+      to a weekly cadence
+
+---
+
+## Database migrations
+
+Every schema change is a committed file in [`supabase/migrations/`](../supabase/migrations/),
+applied in numeric order. **Never hand-edit schema in the Supabase dashboard** — if a change
+isn't in a migration file, it doesn't happen.
+
+**Applying migrations:**
 
 ```bash
-npx supabase db dump --project-ref uihapuiivlrpfxftyivo -f backups/sys-$(Get-Date -Format yyyyMMdd).sql
+# One-time: set these locally (Project Settings → Database → Connection string, "Session" mode)
+export SUPABASE_DEV_DB_URL="postgres://...pwgspnqodaokmkoyghcu..."
+export SUPABASE_SYS_DB_URL="postgres://...uihapuiivlrpfxftyivo..."
+
+npm run db:migrate:dev    # supabase db push against dev
+npm run db:migrate:prod   # supabase db push against sys (production)
 ```
 
-- [ ] Weekly dump to private storage (or private repo) until you pay for Pro automated backups
-- [ ] Upgrade to Pro when: storage ~500MB, ~50K MAU, or a real backup/SLA incident
+Falls back to pasting the same files into SQL Editor, in order, if a DB connection string isn't
+available — but the script is the preferred path since it can't skip a file or apply them
+out of order.
+
+**Expand → migrate → contract, for anything that isn't purely additive:** the app update and the
+DB migration don't land on every device at the same instant, so a breaking schema change ships
+in stages, never in one migration:
+
+1. Add the new column as **nullable** (or the new table, alongside the old one)
+2. Ship an app version that writes to **both** old and new
+3. Backfill old data into the new shape
+4. Ship an app version that reads only from the new shape
+5. Only then, in a **later** migration, drop the old column/table
+
+`006_soft_delete_account.sql` → `010_routines_soft_delete.sql` follow this pattern (add nullable
+`deleted_at`, ship reads/writes against it) as the reference example.
 
 ---
 
@@ -371,7 +413,7 @@ Needs: `EXPO_TOKEN`, Supabase access tokens / DB passwords as GitHub secrets.
 ## Suggested order this week
 
 1. **Phase 1:** confirm `dev` / `sys` on GitHub; protect `sys`; read [GITHUB_PROMOTION.md](./GITHUB_PROMOTION.md).
-2. Confirm **sys** Supabase has migrations `001`–`007`; finish OAuth for sys (Google redirect for `uihapuiivlrpfxftyivo`, publish consent screen).
+2. Confirm **sys** Supabase has every migration applied; finish OAuth for sys (Google redirect for `uihapuiivlrpfxftyivo`, publish consent screen).
 3. Phase 0 accounts (Expo login, Google Play Console, Google Cloud OAuth).
 4. Phase 3 remaining: Supabase redirect schemes + `eas env:create` for development/preview.
 5. Phase 4: one development device build, then a `preview` (production) build.

@@ -40,6 +40,7 @@ type RoutineRow = {
   created_at: number;
   updated_at: number;
   synced: number;
+  deleted_at: number | null;
 };
 
 function rowToRoutine(row: RoutineRow): Routine {
@@ -59,6 +60,7 @@ function rowToRoutine(row: RoutineRow): Routine {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     synced: row.synced === 1,
+    deletedAt: row.deleted_at ?? null,
   };
 }
 
@@ -122,6 +124,7 @@ export async function createRoutine(input: NewRoutineInput): Promise<Routine> {
     createdAt: now,
     updatedAt: now,
     synced: false,
+    deletedAt: null,
   };
   await upsertLocalRoutine(routine);
   nudgeSync();
@@ -134,8 +137,8 @@ export async function upsertLocalRoutine(routine: Routine): Promise<void> {
     db.runSync(
       `INSERT INTO routines (
         id, user_id, name, category, predicted_seconds, visual_style, recurrence_days,
-        reminder_hour, reminder_minute, start_date, end_date, active, created_at, updated_at, synced
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        reminder_hour, reminder_minute, start_date, end_date, active, created_at, updated_at, synced, deleted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         user_id = excluded.user_id,
         name = excluded.name,
@@ -150,7 +153,8 @@ export async function upsertLocalRoutine(routine: Routine): Promise<void> {
         active = excluded.active,
         created_at = excluded.created_at,
         updated_at = excluded.updated_at,
-        synced = excluded.synced`,
+        synced = excluded.synced,
+        deleted_at = excluded.deleted_at`,
       [
         routine.id,
         routine.userId,
@@ -167,6 +171,7 @@ export async function upsertLocalRoutine(routine: Routine): Promise<void> {
         routine.createdAt,
         routine.updatedAt,
         routine.synced ? 1 : 0,
+        routine.deletedAt,
       ],
     );
     return;
@@ -182,11 +187,11 @@ export async function listRoutines(): Promise<Routine[]> {
   const db = await getSqlite();
   if (db) {
     const rows = db.getAllSync<RoutineRow>(
-      `SELECT * FROM routines ORDER BY updated_at DESC`,
+      `SELECT * FROM routines WHERE deleted_at IS NULL ORDER BY updated_at DESC`,
     );
     return rows.map(rowToRoutine);
   }
-  return readAsyncRoutines();
+  return (await readAsyncRoutines()).filter((r) => !r.deletedAt);
 }
 
 export async function listActiveRoutinesDueToday(
@@ -285,16 +290,29 @@ export async function setRoutineActive(
   return next;
 }
 
+/**
+ * Soft-delete: keeps the row (marked deleted_at, synced=false) so the
+ * deletion propagates to other devices via the normal delta-sync watermark,
+ * instead of silently vanishing on devices that were offline. The local
+ * notification-ID map is device-local and safe to hard-delete.
+ */
 export async function deleteRoutineLocal(id: string): Promise<void> {
+  const now = Date.now();
   const db = await getSqlite();
   if (db) {
     db.runSync(`DELETE FROM routine_notifications WHERE routine_id = ?`, [id]);
-    db.runSync(`DELETE FROM routines WHERE id = ?`, [id]);
+    db.runSync(
+      `UPDATE routines SET deleted_at = ?, updated_at = ?, synced = 0 WHERE id = ?`,
+      [now, now, id],
+    );
     return;
   }
-  await writeAsyncRoutines(
-    (await readAsyncRoutines()).filter((r) => r.id !== id),
-  );
+  const rows = await readAsyncRoutines();
+  const idx = rows.findIndex((r) => r.id === id);
+  if (idx >= 0) {
+    rows[idx] = { ...rows[idx], deletedAt: now, updatedAt: now, synced: false };
+    await writeAsyncRoutines(rows);
+  }
   await writeAsyncNotifs(
     (await readAsyncNotifs()).filter((n) => n.routineId !== id),
   );

@@ -28,18 +28,19 @@ export const fonts = {
   mono: 'Inter_500Medium',
 } as const;
 
-/** Wireframe labels → stored VisualStyle */
+/** Wireframe labels → stored VisualStyle. `premium: true` styles require TimeSense Plus. */
 export const STYLE_OPTIONS = [
-  { label: 'Radial', value: 'pizza' as const, icon: 'chart-donut' as const },
-  { label: 'Pizza', value: 'pie' as const, icon: 'pizza' as const },
-  { label: 'Plant', value: 'plant' as const, icon: 'sprout' as const },
+  { label: 'Radial', value: 'pizza' as const, icon: 'chart-donut' as const, premium: false },
+  { label: 'Pizza', value: 'pie' as const, icon: 'pizza' as const, premium: false },
+  { label: 'Plant', value: 'plant' as const, icon: 'sprout' as const, premium: false },
   {
     label: 'Moon',
     value: 'moon' as const,
     icon: 'moon-waning-crescent' as const,
+    premium: false,
   },
-  { label: 'Monk', value: 'monk' as const, icon: 'meditation' as const },
-  { label: 'Cat', value: 'cat' as const, icon: 'cat' as const },
+  { label: 'Monk', value: 'monk' as const, icon: 'meditation' as const, premium: false },
+  { label: 'Cat', value: 'cat' as const, icon: 'cat' as const, premium: true },
 ];
 
 export const CATEGORY_OPTIONS = [

@@ -22,6 +22,7 @@ import { getStreakProfile } from '@/lib/streakService';
 import { listRecentTasks } from '@/lib/tasksDb';
 import { formatClock } from '@/lib/timerMath';
 import { namesFromUserMetadata } from '@/lib/userNames';
+import { recomputeAndWriteWidgetSnapshot } from '@/lib/widgetSnapshot';
 import { useAuthStore } from '@/stores/authStore';
 import type { Routine, Task } from '@/types/task';
 
@@ -64,6 +65,7 @@ export default function HomeScreen() {
     const profile = await getStreakProfile(user?.id ?? null);
     setStreak(profile?.streakCount ?? 0);
     setFreezes(profile?.freezesAvailable ?? 0);
+    void recomputeAndWriteWidgetSnapshot(user?.id ?? null);
   }, [user?.id]);
 
   useFocusEffect(
@@ -182,12 +184,7 @@ function RoutineCard({
   const onPress = () => {
     router.push({
       pathname: '/timer/new',
-      params: {
-        name: routine.name,
-        category: routine.category ?? undefined,
-        minutes: String(minutes),
-        visualStyle: routine.visualStyle,
-      },
+      params: { routineId: routine.id },
     });
   };
 

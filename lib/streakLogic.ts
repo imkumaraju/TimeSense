@@ -19,6 +19,8 @@ export type StreakApplyResult = StreakState & {
   freezeSpent: boolean;
   /** Freeze earned from a 7-day milestone this evaluation. */
   freezeEarned: boolean;
+  /** Streak reset to 1 because the gap couldn't be bridged (used by the widget's Streak Lost state). */
+  reset: boolean;
 };
 
 /** Device-local calendar date as YYYY-MM-DD. */
@@ -69,6 +71,7 @@ export function applyStreakOnTaskComplete(
       changed: true,
       freezeSpent: false,
       freezeEarned: next.freezeEarned,
+      reset: false,
     };
   }
 
@@ -82,6 +85,7 @@ export function applyStreakOnTaskComplete(
       changed: false,
       freezeSpent: false,
       freezeEarned: false,
+      reset: false,
     };
   }
 
@@ -95,6 +99,7 @@ export function applyStreakOnTaskComplete(
       changed: true,
       freezeSpent: false,
       freezeEarned: next.freezeEarned,
+      reset: false,
     };
   }
 
@@ -108,6 +113,7 @@ export function applyStreakOnTaskComplete(
       changed: true,
       freezeSpent: false,
       freezeEarned: next.freezeEarned,
+      reset: false,
     };
   }
 
@@ -122,10 +128,11 @@ export function applyStreakOnTaskComplete(
       changed: true,
       freezeSpent: true,
       freezeEarned: next.freezeEarned,
+      reset: false,
     };
   }
 
-  // Gap too large, or one-day gap with no freeze
+  // Gap too large, or one-day gap with no freeze — the streak is actually lost.
   const next = maybeEarnFreeze(1, freezes);
   return {
     streakCount: 1,
@@ -134,5 +141,6 @@ export function applyStreakOnTaskComplete(
     changed: true,
     freezeSpent: false,
     freezeEarned: next.freezeEarned,
+    reset: true,
   };
 }

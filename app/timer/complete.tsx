@@ -15,7 +15,12 @@ import { TsSectionLabel } from '@/components/ui/TsSectionLabel';
 import { colors, fonts } from '@/constants/theme';
 import { syncNow } from '@/lib/syncService';
 import { recordStreakOnTaskComplete } from '@/lib/streakService';
+import { localDateString } from '@/lib/streakLogic';
 import { completeTask } from '@/lib/tasksDb';
+import {
+  markWidgetOneDayFlags,
+  recomputeAndWriteWidgetSnapshot,
+} from '@/lib/widgetSnapshot';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { MoodTag } from '@/types/task';
@@ -41,7 +46,7 @@ export default function TaskCompleteScreen() {
   const user = useAuthStore((s) => s.user);
 
   const derived = getDerived(Date.now());
-  const [mood, setMood] = useState<MoodTag>('about_right');
+  const [mood, setMood] = useState<MoodTag | null>(null);
   const [saving, setSaving] = useState(false);
   const [actualMinutes, setActualMinutes] = useState(1);
   const [seeded, setSeeded] = useState(false);
@@ -73,7 +78,12 @@ export default function TaskCompleteScreen() {
     try {
       const mins = clampMinutes(actualMinutes);
       await completeTask(meta.taskId, mins * 60, Date.now(), mood);
-      await recordStreakOnTaskComplete(user?.id ?? null);
+      const streakResult = await recordStreakOnTaskComplete(user?.id ?? null);
+      await markWidgetOneDayFlags(localDateString(), {
+        freezeSpent: streakResult.freezeSpent,
+        freezeEarned: streakResult.freezeEarned,
+      });
+      void recomputeAndWriteWidgetSnapshot(user?.id ?? null);
       clear();
       if (mode === 'signed_in') {
         void syncNow();
@@ -122,10 +132,10 @@ export default function TaskCompleteScreen() {
       <View style={styles.moods}>
         {MOODS.map((m) => (
           <TsChip
-            key={m.value!}
+            key={m.value}
             label={m.label}
             active={mood === m.value}
-            onPress={() => setMood(m.value)}
+            onPress={() => setMood((cur) => (cur === m.value ? null : m.value))}
           />
         ))}
       </View>

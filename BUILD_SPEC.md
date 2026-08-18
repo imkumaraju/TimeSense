@@ -366,7 +366,7 @@ Use this as the step-by-step implementation checklist. Complete each milestone b
 | 5 | **Active Timer screen** — wire the visual component to real timer state, add pause/resume/finish. | ✅ |
 | 6 | **Auth screens + guest mode** — sign up/log in flow, session persistence (`supabase.auth.onAuthStateChange`), and the local-only guest path. | ✅ |
 | 7 | **New Timer / task setup screen** — predicted duration input, optional name/description, save to local DB on start. | ✅ |
-| 8 | **Task complete flow** — capture actual duration + mood, write to SQLite, push to Supabase (or queue if offline/guest). | ✅ (actual duration + push/queue; mood UI still optional) |
+| 8 | **Task complete flow** — capture actual duration + mood, write to SQLite, push to Supabase (or queue if offline/guest). | ✅ |
 | 9 | **Sync layer** — background flush of unsynced rows, delta pull-on-login / foreground (`updated_at` watermark). | ✅ |
 | 10 | **Home screen** — list + quick-start presets. | ✅ (presets + new timer; recent list still light) |
 | 11 | **Calibration/Insights screen** — query local SQLite only, compute rolling stats, render chart. | ✅ (custom bars + insight cards; week/month/all) |
@@ -423,9 +423,9 @@ section 5's build order, not part of v1.
 |------|---------|--------|
 | 7.1 | **Learned Defaults** | ✅ (hint on New Timer by name) |
 | 7.2 | **Interruption Tracking** | ✅ (pause gaps; insights later) |
-| 7.3 | **Lock-Screen / Widget Timer** | ⬜ |
-| 7.4 | **Re-engagement / Anti-Abandonment** | ⬜ (streaks ✅; nudges ⬜) |
-| 7.5 | **Recurring Routines** (§9) | ⬜ → implement next |
+| 7.3 | **Home Screen Widget** (Chibi Tabby mood widget, §10) | ⬜ |
+| 7.4 | **Re-engagement / Anti-Abandonment** | ✅ (streaks ✅; gentle re-entry nudge ✅) |
+| 7.5 | **Recurring Routines** (§9) | ✅ |
 
 ### 7.1 Learned Defaults
 
@@ -447,18 +447,14 @@ section 5's build order, not part of v1.
   focus sessions average 2.3 interruptions" — shown alongside the existing calibration charts
   in the Insights screen (section 3.5).
 
-### 7.3 Lock-Screen / Widget Timer
+### 7.3 Home Screen Widget
 
-- iOS: build with **WidgetKit** via Expo's config plugin support (or an Expo dev client with
-  a native WidgetKit target) — shows the live shrinking pie/bar on the Lock Screen and Home
-  Screen widget gallery, updating via `TimelineProvider`.
-- Android: equivalent via **Jetpack Glance** or a native `AppWidgetProvider`, exposed through
-  a similar Expo config plugin / native module.
-- High value here because the core premise of the app is *ambient* time awareness — the
-  widget lets the visual be glanceable without opening the app at all.
-- Note: this is the most technically involved v1.5 item since it requires native code outside
-  the standard Expo managed workflow (a custom dev client or EAS Build with config plugins) —
-  budget more time for it than the other two.
+Superseded the earlier "live shrinking pie/bar on Lock Screen" concept explored here. The
+chosen direction is a **Duolingo-style mascot widget** (chibi cat, mood-state driven by streak
++ today's due Routine) rather than a live-rendered timer visual — see §10 for the full spec.
+Kept as the most technically involved v1.5 item since it requires native code outside the
+standard Expo managed workflow (config plugins / a custom dev client) — budget more time for
+it than the other v1.5 items.
 
 ### 7.4 Re-engagement / Anti-Abandonment
 
@@ -470,6 +466,17 @@ section 5's build order, not part of v1.
   single low-pressure notification — e.g. "no worries, want to log just one thing today?" —
   rather than guilt-driven copy. Use `expo-notifications` local scheduled notifications for
   this; no backend push infra needed for v1.5.
+
+  **Implemented:** `lib/reengagementNudge.ts`. Rather than checking `last_active_date` against
+  wall-clock time (which needs code to run while the app is closed, which Expo local
+  notifications can't do without a background task), it reschedules a single one-time
+  notification `REENTRY_NUDGE_DAYS` (3) out from *now* on every cold start/foreground
+  (`app/_layout.tsx`), keyed to a fixed identifier so each reschedule replaces the pending one
+  instead of stacking. An active user keeps pushing their own nudge further into the future by
+  opening the app; it only actually fires once nobody's opened it to reschedule it — same
+  idempotent-identifier trick as `ensureLastChanceWidgetTrigger` (§10.5a). Pure date math is
+  split into `computeReentryNudgeDate()` for unit testing without mocking
+  `expo-notifications`.
 
 ---
 
@@ -537,3 +544,170 @@ opens after that date. One stray reminder if the user never reopens is an accept
 
 Reminders are client-scheduled. Syncing routine **rules** to Supabase is backup/multi-device
 only — no Realtime and no push infrastructure.
+
+---
+
+## 10. Home Screen Widget (Chibi Tabby)
+
+Duolingo-style home screen widget: a chibi-proportioned cat mascot that reflects streak status
+and today's due Routine, in 8 mood states. Design source: `chibi-tabby-widget-design.html`
+(visual reference/prototype). Implementation source: `streak-widget-feature-spec.md`. Ties
+into the existing streak fields on `profiles` (§4.1/4.2: `streak_count`,
+`freezes_available`, `last_active_date`) and the Routines "due today" logic (§9.3).
+
+> **Resolved:** the "Streak Logic" evaluation spec this section's triggers depend on (streak
+> reset, freeze consumption, milestone crossing) already exists —
+> `docs/concepts/streak-logic-feature-spec.md` / `lib/streakLogic.ts` — it just wasn't
+> cross-referenced here yet. See §10.9 for what changed there to support the widget.
+
+### 10.1 Mascot & palette
+
+**Chibi Tabby** — big round chibi head, small body, close-set rounded ears, large expressive
+eyes; deliberately softened proportions (short muzzle, close-set ears) to avoid reading as a
+wild cat. Production assets use the **existing design tokens** from `constants/theme.ts`
+(equivalent to `--crust`, `--crust-dark`, `--basil`, `--sauce`, `--cheese`, `--cream`,
+`--board`) — the hex values in the prototype HTML are exploration shortcuts, not a proposal
+for a separate widget-only palette. Two colors are held constant regardless of mascot style:
+**Last Chance** always uses the sauce-to-board gradient; **Completed** always uses basil.
+
+### 10.2 The 8 states
+
+| State | Mood key | Trigger condition | Task line |
+|---|---|---|---|
+| Calm | `calm` | Routine due today (§9.3) and reminder time hasn't passed | `<Routine name> · <time>` |
+| Reminder | `alert` | Due today, within a configurable window before reminder time (e.g. 3h) and not completed | `Don't forget: <Routine name>` |
+| Last chance | `worried` | Due today, within 1–2h of end-of-day/cutoff and not completed | `Streak ends in <N> hours!` |
+| Streak lost | `sad` | `streak_count` reset to 1 as of last evaluation | `Start a new streak today` |
+| Completed | `completed` | Today's due routine has a matching `tasks` row with `routine_id` set and `ended_at` populated | `<Routine name> — done!` |
+| Rest day | `resting` | No routine due today (§9.3 returns no matches) | `No routines today` |
+| Freeze saved | `freeze` (renders as `calm` + sparkle) | A freeze was consumed in the most recent streak evaluation — shown for one day only | `A freeze covered yesterday` |
+| Milestone | `happy` (+ confetti) | `streak_count` just crossed a 7-day multiple — shown for one day only | `<N>-day streak!` |
+
+All state logic reuses existing data (`profiles` streak fields + the §9.3 "due today" query).
+**No new database tables are needed for the widget itself.**
+
+### 10.3 Sizes
+
+- **Small** — streak count only, mood-appropriate icon.
+- **Medium** — streak count + task line + subtitle.
+
+Both sizes reuse the same mascot illustration, scaled — no separate artwork per size.
+
+### 10.4 Illustration delivery: static assets, not live drawing
+
+iOS WidgetKit (SwiftUI, separate extension process) and Android Glance/`AppWidgetProvider`
+are both far more constrained than the app's own UI — arbitrary custom SVG drawing/animation
+like the prototype isn't a good fit. Export each of the 8 mood states as a **static image
+asset** (PNG or rasterized SVG) at required resolutions, generated once from the illustration
+source — not drawn programmatically inside the widget extension. The prototype's live
+blink/animation is a preview device only; widgets refresh on a timeline (§10.6), they don't
+run a live animation loop.
+
+### 10.5 Data contract: app → widget
+
+Widget extensions run in a separate process and can't query the app's RN runtime or SQLite
+directly. The main app writes a small denormalized snapshot to a shared location whenever
+something relevant changes (task completes, routine due-status changes, streak evaluation
+runs):
+
+- **iOS** — App Group shared container (small JSON/plist file).
+- **Android** — `SharedPreferences` or a small file readable by the widget provider.
+
+```json
+{
+  "mood": "calm",
+  "streakCount": 5,
+  "routineName": "Leg Day",
+  "reminderTime": "18:00",
+  "taskLine": "Leg Day · 6:00 PM",
+  "subLine": "Plenty of time"
+}
+```
+
+Keep the snapshot tiny and pre-computed — the widget never runs "due today" or streak math
+itself; the main app computes mood + text once and the widget just renders it, same
+compute-don't-store pattern as Insights (§3.6) and Routines (§9.1).
+
+### 10.5a Implementation status (Android)
+
+Data layer + Android widget UI are built: `lib/widgetSnapshot.ts` (pure `computeWidgetMood` +
+persistence via `writeWidgetSnapshot`/`readWidgetSnapshot`), `widgets/StreakWidget.tsx` +
+`widgets/widgetTaskHandler.ts` (using `react-native-android-widget`), wired into task-complete,
+cold start, and every routine mutation.
+
+- **Mascot is the real Chibi Tabby design**, not a static PNG export — `lib/chibiTabbySvg.ts`
+  ports `drawChibiTabby()`/`drawDecoration()` from `chibi-tabby-widget-design.html` into SVG
+  markup (theme.ts tokens, not the prototype's own hex values), rendered natively via
+  `SvgWidget` from `react-native-android-widget`. This intentionally departs from §10.4's
+  "static PNG, not live drawing" recommendation — SVG-string rendering turned out to be
+  supported and avoids needing a separate art-export pass, at the cost of one static frame per
+  mood (no blink) rather than a rasterized asset.
+- **Both mood-transition triggers are wired.** Reminder: piggybacked on the routine's existing
+  reminder notification firing (`Notifications.addNotificationReceivedListener` in
+  `app/_layout.tsx`) — free, no new schedule. Last Chance: a dedicated once-daily silent local
+  notification (`ensureLastChanceWidgetTrigger()` in `lib/widgetSnapshot.ts`, fired at 22:00,
+  scheduled idempotently on cold start) recomputes the widget without alerting the user —
+  `lib/timerFeedback.ts`'s shared `Notifications.setNotificationHandler` now checks
+  `data.widgetSilent` to suppress the banner/sound for it specifically, leaving all other
+  notification types (timer milestones, routine reminders) unaffected.
+
+iOS WidgetKit is not built (§10.9 dependency: no Mac in the current dev environment). On-device
+Android verification (the manual walkthrough this section's build plan called for) hasn't run
+either — no emulator/device available in the environment this was built in.
+
+### 10.6 Scheduling transitions (app-closed problem)
+
+Widgets can't refresh live — iOS enforces a daily refresh budget (roughly 40–70/day, i.e.
+every 15–60 min) with no guaranteed exact timing. Same fix as Routines' notifications: don't
+rely on a live trigger, schedule transitions in advance.
+
+- When due-today status is established (midnight rollover or app foreground), compute that
+  day's mood transition times (Calm → Reminder → Last Chance) from the routine's
+  `reminder_hour`/`reminder_minute`.
+- Write multiple future timeline entries (iOS: multiple `TimelineEntry` values; Android:
+  schedule next update via `WorkManager`/`AlarmManager` per transition) rather than one
+  "current state" entry.
+- Reload policy: refresh once the last scheduled entry's time passes, or immediately when the
+  main app writes a new snapshot (e.g. routine completed → jump straight to Completed instead
+  of waiting out the timeline).
+
+### 10.7 Tap behavior
+
+Deep-links to the same destination as a Routine notification tap (§9): pre-filled New Timer
+for that day's due routine. If no routine is due (Rest Day), tapping opens Home instead.
+
+**Implemented**, both surfaces share one destination: `app/timer/new.tsx` accepts an optional
+`routineId` param and resolves it (via `getRoutineById`) into name/predicted-minutes/category/
+visual-style on mount, rather than either caller pre-computing those fields itself.
+
+- **Widget tap** — `WidgetSnapshot.dueRoutineId` (paired with `routineName`, set in every
+  branch of `computeWidgetMood`) lets `widgets/StreakWidget.tsx` build an `OPEN_URI` click
+  action to `${scheme}://timer/new?routineId=...` when a routine is due; falls back to
+  `OPEN_APP` (opens Home) on a Rest Day or if the app scheme isn't resolvable.
+- **Routine notification tap** — `rescheduleRoutineNotifications` now attaches
+  `data: { routineId }` to the scheduled notification content. `app/_layout.tsx` listens with
+  `Notifications.addNotificationResponseReceivedListener` (plus
+  `getLastNotificationResponseAsync` for the cold-start case — app was closed, tap launched
+  it) and routes to `/timer/new?routineId=...` when present.
+- Home's own due-routine cards (`RoutineCard` in `app/(tabs)/index.tsx`) were switched to the
+  same `routineId` param instead of building the prefill fields inline, so there's one prefill
+  code path instead of three.
+
+### 10.8 Decorations
+
+Sparkle (Freeze Saved) and confetti (Milestone) are small decorative overlays for those two
+states, not a separate animation layer. Implemented as static SVG paths within
+`lib/chibiTabbySvg.ts`'s per-mood markup (see §10.5a) rather than baked into a raster asset.
+
+### 10.9 Open questions (not yet decided)
+
+- Multiple routines due the same day — show nearest-upcoming, or a count? Leaning
+  nearest-upcoming (a widget is glanced at, not read carefully), not finalized.
+- Exact hour windows for Calm → Reminder → Last Chance transitions ("3 hours before",
+  "1–2 hours before" are placeholders).
+- ~~The Streak Logic evaluation spec itself~~ — resolved: it already existed at
+  `docs/concepts/streak-logic-feature-spec.md` / `lib/streakLogic.ts`, just wasn't
+  cross-referenced from here. `applyStreakOnTaskComplete()` now also returns a `reset` flag,
+  added specifically so the widget's Streak Lost state (§10.2) is derivable without a new
+  stored flag — see `lib/widgetSnapshot.ts`'s `streakLostToday()`.
+- ~~Last Chance's own scheduled widget-refresh trigger~~ — resolved, see §10.5a.

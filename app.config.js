@@ -77,6 +77,12 @@ const config = {
     },
     predictiveBackGestureEnabled: false,
     package: env.bundleId,
+    // POST_NOTIFICATIONS (Android 13+) is also auto-added by the
+    // expo-notifications plugin below; declared explicitly so it's visible
+    // here for Play Console's permissions review. No exact-alarm permission:
+    // routine reminders are recurring WEEKLY triggers, not time-critical
+    // exact alarms, so SCHEDULE_EXACT_ALARM is intentionally not requested.
+    permissions: ['android.permission.POST_NOTIFICATIONS'],
     intentFilters: [
       {
         action: 'VIEW',
@@ -113,6 +119,27 @@ const config = {
       {
         icon: './assets/images/icon.png',
         color: '#D98A3D',
+      },
+    ],
+    '@sentry/react-native',
+    [
+      'react-native-android-widget',
+      {
+        widgets: [
+          {
+            name: 'Streak',
+            label: 'TimeSense Streak',
+            description: 'Today’s routine and streak status, at a glance.',
+            minWidth: '110dp',
+            minHeight: '110dp',
+            targetCellWidth: 2,
+            targetCellHeight: 2,
+            maxResizeWidth: '250dp',
+            maxResizeHeight: '250dp',
+            resizeMode: 'horizontal|vertical',
+            updatePeriodMillis: 1800000,
+          },
+        ],
       },
     ],
   ],

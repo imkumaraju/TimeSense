@@ -25,9 +25,10 @@ import {
 } from '@/constants/theme';
 import { localDateString } from '@/lib/routineLogic';
 import { rescheduleRoutineNotifications } from '@/lib/routineNotifications';
-import { createRoutine } from '@/lib/routinesDb';
+import { createRoutine, getRoutineById } from '@/lib/routinesDb';
 import { getDefaultVisualStyle } from '@/lib/settings';
 import { createTask, listRecentTasks } from '@/lib/tasksDb';
+import { useProfile } from '@/lib/useProfile';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { TaskCategory, VisualStyle } from '@/types/task';
@@ -40,6 +41,7 @@ export default function NewTimerScreen() {
     category?: string;
     visualStyle?: string;
     repeat?: string;
+    routineId?: string;
   }>();
   const initialMinutes = Number(params.minutes) || 25;
 
@@ -67,6 +69,7 @@ export default function NewTimerScreen() {
 
   const start = useActiveTimerStore((s) => s.start);
   const user = useAuthStore((s) => s.user);
+  const { isPlus } = useProfile();
 
   const clampMinutes = (n: number) => Math.max(1, Math.min(240, Math.round(n)));
 
@@ -89,6 +92,21 @@ export default function NewTimerScreen() {
     if (params.visualStyle) return;
     void getDefaultVisualStyle().then(setVisualStyle);
   }, [params.visualStyle]);
+
+  // Deep link from a routine notification/widget tap (§10.7) — only carries the id, so
+  // resolve the rest of the prefill from local SQLite once on mount.
+  useEffect(() => {
+    if (!params.routineId) return;
+    void getRoutineById(params.routineId).then((routine) => {
+      if (!routine) return;
+      setName(routine.name);
+      const mins = Math.max(1, Math.round(routine.predictedSeconds / 60));
+      setMinutes(mins);
+      setMinutesText(String(mins));
+      if (routine.category) setCategory(routine.category);
+      setVisualStyle(routine.visualStyle);
+    });
+  }, [params.routineId]);
 
   const refreshHint = useCallback(async (taskName: string) => {
     const trimmed = taskName.trim().toLowerCase();
@@ -266,15 +284,25 @@ export default function NewTimerScreen() {
 
         <TsSectionLabel>Timer style</TsSectionLabel>
         <View style={styles.chips}>
-          {STYLE_OPTIONS.map((opt) => (
-            <TsChip
-              key={opt.value}
-              label={opt.label}
-              icon={opt.icon}
-              active={visualStyle === opt.value}
-              onPress={() => setVisualStyle(opt.value)}
-            />
-          ))}
+          {STYLE_OPTIONS.map((opt) => {
+            const locked = opt.premium && !isPlus;
+            return (
+              <TsChip
+                key={opt.value}
+                label={opt.label}
+                icon={opt.icon}
+                active={visualStyle === opt.value}
+                locked={locked}
+                onPress={() => {
+                  if (locked) {
+                    router.push('/paywall');
+                    return;
+                  }
+                  setVisualStyle(opt.value);
+                }}
+              />
+            );
+          })}
         </View>
 
         <TsSectionLabel>Category</TsSectionLabel>

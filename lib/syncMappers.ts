@@ -35,6 +35,8 @@ export type RemoteProfile = {
   freezes_available: number | null;
   last_active_date: string | null;
   deleted_at: string | null;
+  subscription_tier: string | null;
+  subscription_expires_at: string | null;
 };
 
 export type RemoteInterruption = {
@@ -59,6 +61,7 @@ export type RemoteRoutine = {
   active: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 };
 
 export function msToIso(ms: number): string {
@@ -122,6 +125,8 @@ export function remoteProfileToLocal(row: RemoteProfile): Profile {
     freezesAvailable: row.freezes_available ?? 2,
     lastActiveDate: row.last_active_date,
     deletedAt: row.deleted_at ?? null,
+    subscriptionTier: (row.subscription_tier as Profile['subscriptionTier']) ?? 'standard',
+    subscriptionExpiresAt: row.subscription_expires_at ?? null,
   };
 }
 
@@ -157,6 +162,8 @@ export function profileToRemotePayload(profile: Profile) {
     freezes_available: profile.freezesAvailable,
     last_active_date: profile.lastActiveDate,
     deleted_at: profile.deletedAt,
+    subscription_tier: profile.subscriptionTier,
+    subscription_expires_at: profile.subscriptionExpiresAt,
   };
 }
 
@@ -176,6 +183,7 @@ export function routineToRemotePayload(routine: Routine, userId: string) {
     active: routine.active,
     created_at: msToIso(routine.createdAt),
     updated_at: msToIso(routine.updatedAt),
+    deleted_at: routine.deletedAt != null ? msToIso(routine.deletedAt) : null,
   };
 }
 
@@ -196,5 +204,6 @@ export function remoteRoutineToLocal(row: RemoteRoutine): Routine {
     createdAt: isoToMs(row.created_at),
     updatedAt: isoToMs(row.updated_at),
     synced: true,
+    deletedAt: row.deleted_at ? isoToMs(row.deleted_at) : null,
   };
 }

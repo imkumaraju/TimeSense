@@ -14,6 +14,8 @@ describe('remoteProfileToLocal deletedAt', () => {
       freezes_available: 1,
       last_active_date: '2026-08-01',
       deleted_at: '2026-08-08T10:00:00.000Z',
+      subscription_tier: 'standard',
+      subscription_expires_at: null,
     });
     expect(local.deletedAt).toBe('2026-08-08T10:00:00.000Z');
   });
@@ -31,6 +33,8 @@ describe('remoteProfileToLocal deletedAt', () => {
       freezes_available: null,
       last_active_date: null,
       deleted_at: null,
+      subscription_tier: null,
+      subscription_expires_at: null,
     });
     expect(local.deletedAt).toBeNull();
   });
