@@ -65,6 +65,7 @@ export async function rescheduleRoutineNotifications(
         title: routine.name,
         body: `Time for ${routine.name}.`,
         sound: true,
+        data: { routineId: routine.id },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,

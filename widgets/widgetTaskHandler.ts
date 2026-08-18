@@ -12,6 +12,7 @@ const RESTING_FALLBACK = {
   mood: 'resting' as const,
   streakCount: 0,
   routineName: null,
+  dueRoutineId: null,
   reminderTime: null,
   taskLine: 'Open TimeSense',
   subLine: 'Start a timer to begin',
