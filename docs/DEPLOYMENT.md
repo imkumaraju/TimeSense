@@ -14,7 +14,7 @@ Use this as the ordered to-do list. Checkboxes are for you (accounts, portals, s
 | App name / slug `TimeSense` / `timesense` | Done (`app.config.js`) |
 | Bundle / package IDs (env-specific) | **Done** — `com.timesense.dev` (dev) / `com.timesense.sys` (**production**) via `APP_ENV` |
 | URL schemes (env-specific) + path `/auth/callback` | **Done** — `timesense-dev` / `timesense-sys` (`app.config.js`, `lib/oauth.ts`) |
-| `eas.json` profiles: `development`, `preview` (=production), `production` (dormant) | **Done** — `APP_ENV` per profile; preview now builds **app-bundle** for Play Store |
+| `eas.json` profiles: `development`, `preview`, `release`, `production` (dormant) | **Done** — `APP_ENV` per profile. `preview` = internal APK for ad-hoc device testing (sys identity/Supabase). `release` = app-bundle, same sys identity, for Play Store uploads. `production` (APP_ENV=production, `com.timesense`) stays dormant. |
 | Migrations in [`supabase/migrations/`](../supabase/migrations/) | Done — apply per env via `npm run db:migrate:*` (see [Database migrations](#database-migrations)) |
 | Local `.env` + `.env.example` (`EXPO_PUBLIC_SUPABASE_URL` + `KEY`/`ANON_KEY`) | Done |
 | Social auth setup docs (`supabase/SETUP.txt`, `SOCIAL_AUTH_SETUP.txt`) | Done — update per env |
@@ -22,14 +22,15 @@ Use this as the ordered to-do list. Checkboxes are for you (accounts, portals, s
 | Promotion guide (`docs/GITHUB_PROMOTION.md`) | Done — now `dev` → `sys` only |
 | `dev` / `sys` branches on remote | Done. `main` exists but is dormant (not part of the live pipeline). |
 | Lightweight PR CI (Jest on PRs to `dev`/`sys`/`main`) | In repo (`.github/workflows/ci.yml`) |
-| EAS account login / linked Expo project `@raju003/timesense` | **Done** — projectId `c1c68318-e26c-477f-8074-b4cba4e48901` |
+| EAS account login / linked Expo project `@raju003/timesense` | **Done** — confirmed via `eas whoami` (`raju003`), projectId `c1c68318-e26c-477f-8074-b4cba4e48901` |
 | `app.config.js` (env-based name + bundle id + scheme) | **Done** |
-| EAS env vars (Supabase URL + anon key per environment) | **You** — create with `eas env:create` (see Phase 3) |
+| EAS env vars (Supabase URL + anon key per environment) | **Unverified** — check with `eas env:list --environment development` / `--environment preview`; create with `eas env:create` if missing (see Phase 3) |
 | Supabase projects | Dev + sys (=production) live. No 3rd project — not needed under this plan. |
 | Supabase redirect allow lists for new schemes | **You** — add `timesense-dev://…` / `timesense-sys://…` (see below) |
-| GitHub Actions keep-alive | **Missing** (now required for sys, since it holds real user data) |
+| GitHub Actions keep-alive | **Done** — `.github/workflows/keepalive-dev.yml` + `keepalive-sys.yml` exist; confirm repo secrets are set (Phase 6) |
 | Play Store listing | **Missing** — this doc's Phase 5 |
-| README | **Missing** |
+| README | **Done** |
+| `authenticated` role table grants (profiles/tasks/interruptions/routines) | **Done** — migration 011 applied to both dev and sys (2026-08-22) |
 
 ---
 
@@ -278,13 +279,22 @@ Dashboard alternative: [expo.dev](https://expo.dev) → `@raju003/timesense` →
 # Dev client (local day-to-day)
 npx eas-cli build --profile development --platform android
 
-# Production (Play Store) — this is the `preview` profile
+# Ad-hoc sideload test build (sys identity/Supabase, installable APK, no Play Store)
 npx eas-cli build --profile preview --platform android
+
+# Play Store upload (sys identity/Supabase, app-bundle) — this is the `release` profile
+npx eas-cli build --profile release --platform android
 ```
 
+`preview` and `release` both run against **sys** Supabase / `com.timesense.sys` — they only
+differ in output format (`apk` vs `app-bundle`) and distribution (`internal` vs `store`).
+`preview` is for installing directly on a test device without going through Play; `release`
+is the one that actually ships to Play Console, since Play requires an app-bundle for new
+apps (an internal-testing-track APK upload is rejected).
+
 - [ ] Complete first **development** build on a real device
-- [ ] Confirm the `preview` build talks only to **sys** Supabase
-- [ ] Download the resulting `.aab` for upload to Play Console (Phase 5)
+- [ ] Complete a **preview** build, sideload it, confirm it talks only to **sys** Supabase
+- [ ] Complete a **release** build — download the resulting `.aab` for upload to Play Console (Phase 5)
 
 Credentials: EAS can generate an Android keystore — **download and back it up**; losing it blocks future Play Store updates.
 
@@ -302,7 +312,7 @@ Google Play only for this release. iOS/App Store/TestFlight explicitly out of sc
 - [ ] **Store listing** — icon, feature graphic (1024×500), phone screenshots (min 2), short description (≤80 chars), full description
 - [ ] **Content rating questionnaire**
 - [ ] **App content** declarations (ads: no: target audience, etc.)
-- [ ] Upload the `.aab` from the `preview` EAS build to an **Internal testing** track first
+- [ ] Upload the `.aab` from the `release` EAS build to an **Internal testing** track first
 - [ ] Test the internal build end-to-end on a real device, confirm it talks to sys Supabase
 - [ ] Promote Internal → Closed/Open testing (optional) → **Production** track when confident
 - [ ] First production rollout: consider a staged rollout percentage rather than 100% immediately
@@ -311,7 +321,12 @@ Google Play only for this release. iOS/App Store/TestFlight explicitly out of sc
 
 ---
 
-## Phase 6 — Ops: keep-alive + backups (you + small YAML)
+## Phase 6 — Ops: keep-alive + backups — **DONE, verified 2026-08-22**
+
+All repo secrets confirmed present; `keepalive-dev`/`keepalive-sys` running green on schedule,
+`supabase-backup` has 10+ green scheduled runs landing objects in R2, and `restore-test.yml`
+(decrypts latest R2 backup into a disposable Postgres container, never touches dev/sys) ran
+successfully. Nothing left to do here — kept below for reference.
 
 Free Supabase projects pause after ~7 days idle. **Sys now holds real user data — keep-alive is required, not optional.** Dev holds no real user data, but pausing still blocks local sign-in testing, so it gets a lighter-weight ping too.
 
@@ -402,11 +417,12 @@ Needs: `EXPO_TOKEN`, Supabase access tokens / DB passwords as GitHub secrets.
 | Distinct app IDs per env | **Done** in `app.config.js` |
 | `app.config.js` + `APP_ENV` | **Done** — `preview` = production identity |
 | `eas.json` env matrix | **Done** — `preview` now app-bundle for Play |
-| EAS secrets per environment | **You** — `eas env:create` (Phase 3 commands) |
-| Keep-alive workflow | Missing — now required (Phase 6) |
-| Manual `db dump` habit | Missing |
+| EAS secrets per environment | Unverified — check `eas env:list` (Phase 3) |
+| Keep-alive workflow | **Done** — `keepalive-dev.yml` / `keepalive-sys.yml`; confirm repo secrets are set |
+| Manual `db dump` habit | **Done** — `supabase-backup.yml` (nightly, sys) + `restore-test.yml`; confirm one-time R2/GPG setup in RUNBOOK.md is complete |
 | CI auto-promote/build | Missing (correct to wait) |
 | Play Store listing | Missing — this doc's Phase 5 |
+| `authenticated` table grants | **Done** — migration 011 applied to dev and sys (2026-08-22) |
 
 ---
 
