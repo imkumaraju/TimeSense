@@ -31,7 +31,10 @@
 • The task, timer, and routine data you create in the app (name/category are optional, predicted vs. actual durations, timestamps)
 • A device-local notification schedule for routine reminders — this stays on your device and is never synced or uploaded.
 
-We do not collect analytics, advertising identifiers, or usage tracking data. The app has no ads and no third-party analytics or crash-reporting SDKs.</p>
+We do not collect analytics, advertising identifiers, or usage tracking data, and the app has no ads.</p>
+
+<h2>Crash reporting</h2>
+<p>TimeSense uses Sentry to automatically report app crashes and errors, so we can find and fix bugs. This is limited to technical crash data (stack traces, device/OS type, app version) — it does not include your task, timer, or routine content. Crash reporting is not active in local development builds.</p>
 
 <h2>How your data is stored</h2>
 <p>Signed-in data is stored using Supabase (a hosted PostgreSQL database provider) over an encrypted connection. Data is used solely to sync your own tasks and timers across your own devices — we do not sell, share, or use your data for advertising.</p>
