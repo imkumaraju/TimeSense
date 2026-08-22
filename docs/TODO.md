@@ -140,6 +140,31 @@ RevenueCat dashboard screenshots on 2026-08-22:
 | [`BACKLOG.md`](./BACKLOG.md) | Sign in with Apple (parked, out of scope for this release) |
 | [`GITHUB_PROMOTION.md`](./GITHUB_PROMOTION.md) | `dev` → `sys` branch promotion flow |
 
+## Also resolved this session — account/auth fixes found while working the Play Console checklist
+
+- Migration `012_profile_email_and_username_unique.sql` — **committed and applied to both
+  dev and sys** (2026-08-22). Adds `profiles.email` (trigger-populated from
+  `auth.users.email` on every signup path — password, magic link, or Google; not
+  client-writable) and a case-insensitive unique index on `username` (previously
+  unconstrained — two users could pick the same one silently).
+- Fixed `signInWithMagicLink` using a stale hardcoded `timesense://auth/callback` scheme
+  instead of the env-aware `getAuthRedirectUri()` helper Google sign-in already used —
+  magic link would have redirected to the wrong/nonexistent scheme on real dev/sys builds.
+- `signUpWithEmail` now surfaces "That username is already taken — try another" instead of
+  a raw Postgres unique-violation error.
+- Fixed `db:migrate:dev` / `db:migrate:prod` npm scripts silently failing on Windows — they
+  used bash-style `$VAR` syntax, but `npm run` shells through `cmd.exe` on Windows
+  regardless of the invoking terminal, so the variable never expanded. Replaced with
+  `scripts/db-migrate.js`, a small Node wrapper that reads `process.env` directly
+  (shell-agnostic).
+- **Open question, not yet root-caused:** user reported "invalid login credentials" on
+  first sign-in attempt right after confirming a brand-new email/password signup via the
+  confirmation email link. Leading hypothesis: Supabase silently no-ops a repeat `signUp()`
+  call to an email that exists-but-unconfirmed (anti-enumeration behavior) — if signup was
+  attempted twice with different passwords before confirming, the second password never
+  actually took effect. Not reproduced/confirmed with certainty — if it recurs, check the
+  Supabase Users table for that email's `email_confirmed_at` and creation timestamp history.
+
 ## Already resolved this session (2026-08-22) — kept for context, not action items
 
 - Fixed `app/paywall.tsx` + `lib/purchases.ts` to show a visible error instead of a silently
