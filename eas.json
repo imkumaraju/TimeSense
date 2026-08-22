@@ -22,6 +22,14 @@
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
+    "release": {
+      "extends": "preview",
+      "environment": "preview",
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
     "production": {
       "distribution": "store",
       "android": {
