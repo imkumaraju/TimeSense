@@ -75,11 +75,18 @@ export function syncPurchasesIdentity(userId: string | null): void {
 /** Returns null (rather than throwing) if no offering is configured yet in the
  *  RevenueCat dashboard — the paywall falls back to static pricing text. */
 export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
-  if (!REVENUECAT_API_KEY) return null;
+  if (!REVENUECAT_API_KEY) {
+    console.warn('[purchases] no RevenueCat API key set for this build; paywall is inert.');
+    return null;
+  }
   try {
     const offerings = await Purchases.getOfferings();
+    if (!offerings.current) {
+      console.warn('[purchases] RevenueCat has no "current" offering configured.');
+    }
     return offerings.current;
-  } catch {
+  } catch (e) {
+    console.warn('[purchases] getOfferings() failed:', e);
     return null;
   }
 }
