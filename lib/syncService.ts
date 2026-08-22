@@ -187,6 +187,7 @@ async function ensureAndPushProfile(user: User): Promise<number> {
 
   const merged: Profile = {
     id: userId,
+    email: local?.email ?? fromRemote?.email ?? user.email ?? null,
     displayName,
     username,
     firstName,

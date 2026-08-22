@@ -4,6 +4,7 @@ import type { Profile } from '@/types/task';
 function makeProfile(overrides: Partial<Profile> = {}): Profile {
   return {
     id: 'u1',
+    email: null,
     displayName: null,
     username: null,
     firstName: null,

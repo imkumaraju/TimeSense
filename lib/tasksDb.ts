@@ -44,6 +44,7 @@ type InterruptionRow = {
 
 type ProfileRow = {
   id: string;
+  email: string | null;
   display_name: string | null;
   username: string | null;
   first_name: string | null;
@@ -91,6 +92,7 @@ function rowToInterruption(row: InterruptionRow): Interruption {
 function rowToProfile(row: ProfileRow): Profile {
   return {
     id: row.id,
+    email: row.email ?? null,
     displayName: row.display_name,
     username: row.username ?? null,
     firstName: row.first_name ?? null,
@@ -145,6 +147,7 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
 
     CREATE TABLE IF NOT EXISTS profiles (
       id TEXT PRIMARY KEY,
+      email TEXT,
       display_name TEXT,
       username TEXT,
       first_name TEXT,
@@ -214,6 +217,7 @@ function migrateSqliteSchema(db: import('expo-sqlite').SQLiteDatabase) {
   alterSafe(`ALTER TABLE tasks ADD COLUMN description TEXT`);
   alterSafe(`ALTER TABLE tasks ADD COLUMN updated_at INTEGER`);
   alterSafe(`ALTER TABLE tasks ADD COLUMN routine_id TEXT`);
+  alterSafe(`ALTER TABLE profiles ADD COLUMN email TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN username TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN first_name TEXT`);
   alterSafe(`ALTER TABLE profiles ADD COLUMN last_name TEXT`);
@@ -540,11 +544,12 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
   if (db) {
     db.runSync(
       `INSERT INTO profiles (
-        id, display_name, username, first_name, last_name, timezone, default_visual_style,
+        id, email, display_name, username, first_name, last_name, timezone, default_visual_style,
         streak_count, freezes_available, last_active_date, deleted_at,
         subscription_tier, subscription_expires_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
+        email = excluded.email,
         display_name = excluded.display_name,
         username = excluded.username,
         first_name = excluded.first_name,
@@ -559,6 +564,7 @@ export async function upsertLocalProfile(profile: Profile): Promise<void> {
         subscription_expires_at = excluded.subscription_expires_at`,
       [
         profile.id,
+        profile.email,
         profile.displayName,
         profile.username,
         profile.firstName,
@@ -594,6 +600,7 @@ export async function getLocalProfile(id: string): Promise<Profile | null> {
     if (profile.id !== id) return null;
     return {
       ...profile,
+      email: profile.email ?? null,
       username: profile.username ?? null,
       firstName: profile.firstName ?? null,
       lastName: profile.lastName ?? null,

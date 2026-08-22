@@ -25,6 +25,7 @@ async function ensureLocalProfile(id: string): Promise<Profile> {
 
   const profile: Profile = {
     id,
+    email: null,
     displayName: id === GUEST_PROFILE_ID ? 'Guest' : null,
     username: null,
     firstName: null,
