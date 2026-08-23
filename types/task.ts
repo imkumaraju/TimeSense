@@ -44,6 +44,7 @@ export type SubscriptionTier = 'standard' | 'plus';
 
 export type Profile = {
   id: string;
+  email: string | null;
   displayName: string | null;
   username: string | null;
   firstName: string | null;

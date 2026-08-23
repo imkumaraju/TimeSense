@@ -25,6 +25,7 @@ export type RemoteTask = {
 
 export type RemoteProfile = {
   id: string;
+  email: string | null;
   display_name: string | null;
   username: string | null;
   first_name: string | null;
@@ -115,6 +116,7 @@ export function remoteTaskToLocal(row: RemoteTask): Task {
 export function remoteProfileToLocal(row: RemoteProfile): Profile {
   return {
     id: row.id,
+    email: row.email ?? null,
     displayName: row.display_name,
     username: row.username ?? null,
     firstName: row.first_name ?? null,
@@ -149,6 +151,8 @@ export function interruptionToRemotePayload(row: Interruption) {
   };
 }
 
+/** email is intentionally omitted — it's Supabase Auth's source of truth,
+ *  written only by the profiles.email DB trigger, never by the client. */
 export function profileToRemotePayload(profile: Profile) {
   return {
     id: profile.id,

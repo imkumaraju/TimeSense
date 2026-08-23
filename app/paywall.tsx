@@ -39,6 +39,7 @@ export default function PaywallScreen() {
   const monthlyPkg: PurchasesPackage | null = offering?.monthly ?? null;
   const annualPkg: PurchasesPackage | null = offering?.annual ?? null;
   const selectedPkg = plan === 'monthly' ? monthlyPkg : annualPkg;
+  const plansUnavailable = !loadingOffering && !selectedPkg;
 
   const onContinue = async () => {
     if (purchasing) return;
@@ -124,12 +125,18 @@ export default function PaywallScreen() {
         </View>
       )}
 
+      {plansUnavailable && (
+        <Text style={styles.unavailableText}>
+          Plans aren't available right now. Check your connection and try again.
+        </Text>
+      )}
+
       <View style={{ flex: 1 }} />
 
       <TsButton
         label={purchasing ? 'Purchasing…' : 'Continue'}
         block
-        disabled={purchasing || !selectedPkg}
+        disabled={purchasing || plansUnavailable}
         onPress={() => void onContinue()}
       />
       <TsButton
@@ -241,5 +248,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 11,
     color: colors.muted,
+  },
+  unavailableText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: 'center',
+    marginBottom: 8,
   },
 });

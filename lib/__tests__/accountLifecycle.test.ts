@@ -4,6 +4,7 @@ describe('remoteProfileToLocal deletedAt', () => {
   it('maps deleted_at onto Profile.deletedAt', () => {
     const local = remoteProfileToLocal({
       id: 'u1',
+      email: null,
       display_name: 'Ada',
       username: 'ada',
       first_name: 'Ada',
@@ -23,6 +24,7 @@ describe('remoteProfileToLocal deletedAt', () => {
   it('treats missing deleted_at as active', () => {
     const local = remoteProfileToLocal({
       id: 'u1',
+      email: null,
       display_name: null,
       username: null,
       first_name: null,

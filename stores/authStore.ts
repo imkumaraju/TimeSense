@@ -4,6 +4,7 @@ import { create } from 'zustand';
 
 import {
   createSessionFromUrl,
+  getAuthRedirectUri,
   signInWithOAuthProvider,
 } from '@/lib/oauth';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
@@ -150,7 +151,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       },
     });
     if (error) {
-      set({ error: error.message });
+      const isDuplicateUsername =
+        /duplicate key value violates unique constraint "profiles_username_unique_idx"/i.test(
+          error.message,
+        );
+      set({
+        error: isDuplicateUsername
+          ? 'That username is already taken — try another.'
+          : error.message,
+      });
       return false;
     }
     return true;
@@ -164,7 +173,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ error: null });
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: 'timesense://auth/callback' },
+      options: { emailRedirectTo: getAuthRedirectUri() },
     });
     if (error) {
       set({ error: error.message });

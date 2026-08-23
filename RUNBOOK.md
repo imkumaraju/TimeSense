@@ -5,6 +5,10 @@ backups and no point-in-time recovery. `.github/workflows/supabase-backup.yml` r
 nightly `pg_dump`, encrypts it with GPG, and uploads it to Cloudflare R2 as a second,
 self-managed backup layer.
 
+**Status: one-time setup complete, restore verified (2026-08-22).** All repo secrets are set,
+scheduled backups are running green, and `restore-test.yml` has successfully restored the
+latest backup into a disposable Postgres container. Kept below for reference / re-verification.
+
 ## One-time setup
 
 1. **Create an R2 bucket** (Cloudflare dashboard → R2 → Create bucket). Free tier is
