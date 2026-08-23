@@ -112,6 +112,7 @@ const config = {
       },
     ],
     'expo-sqlite',
+    'expo-video',
     'expo-apple-authentication',
     '@react-native-community/datetimepicker',
     [

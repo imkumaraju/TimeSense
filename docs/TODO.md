@@ -5,7 +5,8 @@ Claude) can pick this up cold — each item has enough context to act without re
 Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUNBOOK.md`,
 `BACKLOG.md`) rather than duplicating them; update *this* file's checkboxes as things move.
 
-**Last updated:** 2026-08-22
+**Last updated:** 2026-08-23 (item #11: monk + plant both on the intro/loop/outro video model,
+old continuous-scrub code deleted)
 
 ---
 
@@ -127,6 +128,92 @@ RevenueCat dashboard screenshots on 2026-08-22:
   - Test on an actual tablet emulator (Play Console's testing tools, or Android Studio AVD)
   - Once verified, capture 7" and 10" tablet screenshots and add them to the Play Store listing
 - **Not started.** No code changes made toward this yet — pure backlog item.
+
+### 9. Plant timer theme — video animation
+- **Spec (superseded 2026-08-23):** originally built against
+  `docs/concepts/feature-timer-theme-video-scrub.md` (continuous playhead scrubbing via a
+  timing curve). **Migrated to the intro/loop/outro segment model** — see item #11, plant is
+  now covered there alongside monk. `docs/concepts/feature-timer-theme-video-scrub.md` is kept
+  for historical context only.
+- **What changed (2026-08-23):** old landscape 1280×720 `plant.mp4` replaced with a new
+  portrait 9:16 `plant.mp4` (720×1280, 10.006s, 2.6MB) generated from an intro/loop/outro
+  prompt (seed→sprout→closed-bud 0-2s, bud-breathing-anticipation loop 2-8s, bud-opens-to-bloom
+  outro 8-10s). `lib/timerThemes.ts`'s old `TimerThemeConfig`/`timingCurve`/
+  `videoMsForElapsed`/`seekCheckIntervalMs` and `components/timer/VideoScrubTimer.tsx` were
+  deleted — `plantTheme` now lives in `segmentThemes` alongside `monkTheme`, rendered by
+  `components/timer/SegmentVideoTimer.tsx` (see item #11 for that component's behavior).
+- **Not yet done:**
+  - [ ] Run on-device and confirm plant's loop restarts land cleanly, outro timing lines up
+        with countdown completion, and pause/resume/+5min/finish feel right (same on-device
+        check needed for monk, see item #11)
+  - [ ] Confirm usage rights/commercial terms for the source video before a production build
+        ships it
+- **Preview build:** `preview` EAS build with `expo-video` included was triggered 2026-08-22
+  — https://expo.dev/accounts/raju003/projects/timesense/builds/3213c6af-94e1-4eb8-b163-9c22ade8b7ea
+  (predates this migration; a fresh build isn't required since no new native deps were added).
+
+### 10. Full-screen immersive timer view (video-scrub styles)
+- **Spec:** `docs/concepts/feature-fullscreen-immersive-timer.md` — the plant timer's video
+  now fills the entire screen edge-to-edge (no bounded square) with all control UI (Back,
+  Hide clock, Pause, +5 min, Got distracted, Finish) auto-hiding ~2s after start/resume and
+  reappearing on tap; SVG styles are unaffected and keep the original centered layout.
+- **Decisions made answering the spec's open questions (2026-08-22):** scoped to video-scrub
+  styles only (not all styles); "Got distracted" suspends the auto-hide idle timer the same
+  way Pause does (it already calls `pause()`, so this falls out for free).
+- **Built and wired (2026-08-22):** `app/timer/active.tsx` branches into an immersive layout
+  via `isVideoScrubStyle()` (`lib/timerThemes.ts`); the video-scrub player component(s) (now
+  `SegmentVideoTimer.tsx`, see item #11 — was `VideoScrubTimer.tsx` until the 2026-08-23
+  migration)/`VisualTimer.tsx` got a `fullBleed` prop; `expo-linear-gradient` installed for the
+  top/bottom scrims behind the control clusters. Countdown clock visibility stays independent
+  of the controls auto-hide, per spec.
+- **Not yet done:**
+  - [ ] Run on-device and confirm the fade timing/scrim legibility actually looks right
+        against real video content, and that tap-to-reveal / idle-hide / pause-suspend all
+        feel correct in practice
+  - [ ] A second EAS `preview` build is needed for this (new native dep,
+        `expo-linear-gradient`) — same as the video-scrub feature required one for
+        `expo-video`.
+
+### 11. Monk + plant timer themes — intro/loop/outro video animation
+- **Spec:** `docs/concepts/feature-timer-theme-intro-loop-outro.md` — supersedes continuous
+  playhead scrubbing (`feature-timer-theme-video-scrub.md`, now historical-only) for both
+  video-scrub themes: an authored source video split into a fixed intro, a seamlessly-looping
+  middle, and a fixed outro. Mostly native `play()`/`pause()`; seeks only at segment
+  boundaries (loop restart, outro entry, distraction, finish) instead of continuous scrubbing —
+  fixes the seek-driven lag the old model had.
+- **Built and wired (2026-08-23):** `lib/timerThemes.ts` (`SegmentThemeConfig` type,
+  `plantTheme` + `monkTheme` configs, `segmentThemes` registry — old
+  `TimerThemeConfig`/`timingCurve` types deleted), `components/timer/SegmentVideoTimer.tsx`
+  (new player: intro→loop→outro phase tracking off `expo-video`'s `timeUpdate` event,
+  pause/resume via native pause, "got distracted" restarts the loop cycle, finish jumps
+  straight to the outro), `VisualTimer.tsx` wired both `plant` and `monk` styles to it
+  (replacing `VideoScrubTimer.tsx`, deleted, and the old SVG `BanyanMonk` rendering for `monk`)
+  and `isVideoScrubStyle()` updated so both keep the full-screen immersive layout from
+  `feature-fullscreen-immersive-timer.md`.
+- **Source videos landed:** both `assets/timer-themes/monk/monk.mp4` and
+  `assets/timer-themes/plant/plant.mp4` are 720×1280 portrait (9:16, matches the spec's
+  cross-device cropping-safety guidance), 10.006s, ~2.5-2.6MB (probed via mp4 `mvhd`/`tkhd`
+  boxes 2026-08-23). Monk's replaces an earlier landscape 1280×720 draft asset that had been
+  flagged as a crop-safety conflict; plant's replaces the original continuous-scrub-era
+  landscape asset as part of the migration.
+- **Segment boundaries confirmed (2026-08-23) for both themes:** `introEndMs: 2000` /
+  `loopStartMs: 2000` / `loopEndMs: 8000` / `outroStartMs: 8000` in `lib/timerThemes.ts` match
+  each video's actual generation prompt — monk: walk-in/sit/eyes-close 0-2s, seamless-loop
+  stillness 2-8s, eyes-open/stand/walk-out 8-10s; plant: seed/sprout/closed-bud 0-2s,
+  seamless-loop bud-breathing-anticipation 2-8s, bud-opens-to-full-bloom 8-10s. Neither is a
+  guess — both were provided directly from the prompts used to generate the clips.
+- **Not yet done:**
+  - [ ] The "got distracted" desaturation-dip visual treatment (spec'd in the feature doc) is
+        not implemented — `SegmentVideoTimer.tsx` currently only does the seek-back, no color
+        treatment overlay yet.
+  - [ ] Run on-device for both themes: confirm loop restarts land cleanly on `loopStartMs`
+        without a visible jump, outro timing lines up with countdown completion, and
+        pause/resume/+5min/finish all feel right in the real app.
+  - [ ] `BanyanMonk.tsx` (the old SVG monk component) is now unused by `VisualTimer.tsx` —
+        left in place for now since nothing else referenced it; delete once the video version
+        is confirmed as the permanent replacement.
+  - [ ] Confirm usage rights/commercial terms for the monk source video before a production
+        build ships it.
 
 ---
 

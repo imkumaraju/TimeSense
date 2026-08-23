@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   AppState,
   Pressable,
   StyleSheet,
@@ -7,17 +8,23 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VisualTimer } from '@/components/timer/VisualTimer';
 import { TsButton } from '@/components/ui/TsButton';
 import { colors, fonts } from '@/constants/theme';
+import { isVideoScrubStyle } from '@/lib/timerThemes';
 import { createTask } from '@/lib/tasksDb';
 import { pulseMilestoneFeedback } from '@/lib/timerFeedback';
 import { formatClock } from '@/lib/timerMath';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
+
+// See docs/concepts/feature-fullscreen-immersive-timer.md
+const CONTROLS_IDLE_HIDE_MS = 2000;
+const CONTROLS_FADE_MS = 250;
 
 export default function ActiveTimerScreen() {
   const insets = useSafeAreaInsets();
@@ -37,6 +44,10 @@ export default function ActiveTimerScreen() {
   const user = useAuthStore((s) => s.user);
 
   const [, setNow] = useState(() => Date.now());
+  const [distractSignal, setDistractSignal] = useState(0);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const controlsOpacity = useRef(new Animated.Value(1)).current;
+  const idleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (snapshot) return;
@@ -99,6 +110,40 @@ export default function ActiveTimerScreen() {
   const derived = getDerived(Date.now());
   void tick;
 
+  const isPaused = derived?.isPaused ?? false;
+  const isComplete = derived?.isComplete ?? false;
+
+  const scheduleIdleHide = () => {
+    if (idleTimeout.current) clearTimeout(idleTimeout.current);
+    idleTimeout.current = setTimeout(
+      () => setControlsVisible(false),
+      CONTROLS_IDLE_HIDE_MS,
+    );
+  };
+
+  useEffect(() => {
+    Animated.timing(controlsOpacity, {
+      toValue: controlsVisible ? 1 : 0,
+      duration: CONTROLS_FADE_MS,
+      useNativeDriver: true,
+    }).start();
+  }, [controlsVisible, controlsOpacity]);
+
+  // Fresh start, resume-from-pause, or finish all reveal controls; pause/finish suspend
+  // the idle-hide timer (finish never re-hides, pause resumes counting down on resume).
+  useEffect(() => {
+    setControlsVisible(true);
+    if (isPaused || isComplete) {
+      if (idleTimeout.current) clearTimeout(idleTimeout.current);
+      return;
+    }
+    scheduleIdleHide();
+    return () => {
+      if (idleTimeout.current) clearTimeout(idleTimeout.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaused, isComplete]);
+
   if (!meta || !derived) {
     return <View style={styles.container} />;
   }
@@ -108,9 +153,16 @@ export default function ActiveTimerScreen() {
   };
 
   const onDistracted = () => {
+    setDistractSignal((n) => n + 1);
     if (!derived.isPaused) {
       pause();
     }
+  };
+
+  const onScreenTap = () => {
+    if (isPaused || isComplete) return; // already forced visible, nothing to reveal/extend
+    setControlsVisible(true);
+    scheduleIdleHide();
   };
 
   // Moon / Monk / Cat: full content width, compact height; others stay square-ish
@@ -121,6 +173,96 @@ export default function ActiveTimerScreen() {
     meta.visualStyle === 'cat'
       ? contentWidth
       : 220;
+
+  const immersive = isVideoScrubStyle(meta.visualStyle);
+
+  const clock = meta.showDigital ? (
+    <Text style={styles.clock}>{formatClock(derived.remainingSeconds)}</Text>
+  ) : null;
+  const subLabel = (
+    <Text style={[styles.sub, !meta.showDigital && { marginTop: 14 }]}>
+      {derived.isComplete
+        ? "Time's up"
+        : `${meta.showDigital ? 'remaining' : 'Time left'}${
+            meta.name ? ` · ${meta.name}` : ''
+          }`}
+    </Text>
+  );
+
+  if (immersive) {
+    return (
+      <View style={styles.immersiveContainer}>
+        <VisualTimer
+          progress={derived.progress}
+          style={meta.visualStyle}
+          isPaused={derived.isPaused}
+          isComplete={derived.isComplete}
+          distractSignal={distractSignal}
+          totalDurationSec={snapshot?.durationSeconds ?? 0}
+          fullBleed
+        />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onScreenTap} />
+
+        <View pointerEvents="box-none" style={styles.immersiveClockWrap}>
+          {clock}
+          {subLabel}
+        </View>
+
+        <Animated.View
+          pointerEvents={controlsVisible ? 'box-none' : 'none'}
+          style={[styles.immersiveTop, { opacity: controlsOpacity, paddingTop: insets.top + 12 }]}>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.45)', 'transparent']}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.topRow}>
+            <Pressable onPress={() => router.back()} hitSlop={12}>
+              <Text style={styles.backOnVideo}>Back</Text>
+            </Pressable>
+            <Pressable onPress={toggleDigital} hitSlop={12}>
+              <Text style={styles.backOnVideo}>
+                {meta.showDigital ? 'Hide clock' : 'Show clock'}
+              </Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents={controlsVisible ? 'box-none' : 'none'}
+          style={[
+            styles.immersiveBottom,
+            { opacity: controlsOpacity, paddingBottom: insets.bottom + 20 },
+          ]}>
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.5)']}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.row}>
+            <TsButton
+              label={derived.isPaused ? 'Resume' : 'Pause'}
+              variant="secondaryOnDark"
+              onPress={derived.isPaused ? resume : pause}
+              style={styles.halfBtn}
+            />
+            <TsButton
+              label="+5 min"
+              variant="secondaryOnDark"
+              onPress={addFiveMinutes}
+              style={styles.halfBtn}
+            />
+          </View>
+          <TsButton
+            label="Got distracted"
+            variant="ghost"
+            onPress={onDistracted}
+            textStyle={styles.distracted}
+            style={{ marginTop: 4, marginBottom: 12 }}
+          />
+          <TsButton label="Finish" block onPress={onFinish} />
+        </Animated.View>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -144,17 +286,13 @@ export default function ActiveTimerScreen() {
           progress={derived.progress}
           style={meta.visualStyle}
           size={visualSize}
+          isPaused={derived.isPaused}
+          isComplete={derived.isComplete}
+          distractSignal={distractSignal}
+          totalDurationSec={snapshot?.durationSeconds ?? 0}
         />
-        {meta.showDigital ? (
-          <Text style={styles.clock}>{formatClock(derived.remainingSeconds)}</Text>
-        ) : null}
-        <Text style={[styles.sub, !meta.showDigital && { marginTop: 14 }]}>
-          {derived.isComplete
-            ? "Time's up"
-            : `${meta.showDigital ? 'remaining' : 'Time left'}${
-                meta.name ? ` · ${meta.name}` : ''
-              }`}
-        </Text>
+        {clock}
+        {subLabel}
 
         <View style={styles.row}>
           <TsButton
@@ -230,5 +368,35 @@ const styles = StyleSheet.create({
   },
   distracted: {
     color: '#B99A7C',
+  },
+  immersiveContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  immersiveClockWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  immersiveTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  immersiveBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  backOnVideo: {
+    fontFamily: fonts.bodyMedium,
+    color: '#F3E9DA',
+    fontSize: 15,
   },
 });

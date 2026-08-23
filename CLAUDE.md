@@ -59,11 +59,41 @@ backgrounding — see `lib/timerMath.ts` and `stores/activeTimerStore.ts`. Never
 "just count down every tick" implementation.
 
 **Visual timer styles** are separate bespoke components under `components/timer/`
-(`EatingPizza`, `ShrinkingPie`, `DrainingBar`, `DrainingRing`, `GrowingPlant`, `MoonArc`,
-`BanyanMonk`, `CatLoaf`), each taking the same progress prop shape and switched on by
-`VisualStyle` in `types/task.ts`; `components/timer/VisualTimer.tsx` is the dispatcher. Adding
-a new style means adding a component here, a `VisualStyle` union member, and an entry in
-`STYLE_OPTIONS` (`constants/theme.ts`) — not branching inline elsewhere.
+(`EatingPizza`, `ShrinkingPie`, `DrainingBar`, `DrainingRing`, `MoonArc`, `CatLoaf`), each
+taking the same progress prop shape and switched on by `VisualStyle` in `types/task.ts`;
+`components/timer/VisualTimer.tsx` is the dispatcher. Adding a new SVG/reanimated style means
+adding a component here, a `VisualStyle` union member, and an entry in `STYLE_OPTIONS`
+(`constants/theme.ts`) — not branching inline elsewhere. (`monk` used to be an SVG component,
+`BanyanMonk.tsx` — now unused, superseded by the video theme below; not yet deleted.)
+
+**Segment-video styles** (`plant`, `monk`) are a second rendering mechanism for themes authored
+as a single source video (`expo-video`) split into a fixed **intro**, a seamlessly-**looping**
+middle, and a fixed **outro** — the video mostly plays natively (`play()`/`pause()`), seeking
+only at segment-boundary transitions (loop restart, outro entry, distraction, finish), rather
+than continuously scrubbing the playhead every tick (see
+`docs/concepts/feature-timer-theme-intro-loop-outro.md`; supersedes an earlier
+continuous-playhead-scrub model, `feature-timer-theme-video-scrub.md`, which itself superseded
+an even earlier PNG-frame-sequence approach ruled out as too large — 130 frames landed at
+~112MB vs. 2-6MB for the equivalent as a compressed video). Rendered by
+`components/timer/SegmentVideoTimer.tsx` against a per-theme `SegmentThemeConfig` in
+`lib/timerThemes.ts`'s `segmentThemes` registry (video asset, duration, `introEndMs`/
+`loopStartMs`/`loopEndMs`/`outroStartMs`). `VisualTimer.tsx` dispatches to this the same way it
+does the SVG styles. Source videos are authored portrait 9:16 (not landscape) so
+`contentFit="cover"` crops safely across phone/tablet aspect ratios — see the spec doc's
+"Source Aspect Ratio & Cross-Device Cropping Safety" section before adding a new theme video.
+Adding a new segment-video theme means dropping a video under `assets/timer-themes/<theme>/`,
+adding a `SegmentThemeConfig` entry, and wiring the `VisualStyle` case in `VisualTimer.tsx` —
+no changes to `SegmentVideoTimer.tsx` itself.
+
+**Immersive full-screen layout for segment-video styles**: `app/timer/active.tsx` branches on
+`isVideoScrubStyle()` (`lib/timerThemes.ts`) — segment-video styles (`plant`, `monk`) render
+the theme video full-bleed (`SegmentVideoTimer`'s `fullBleed` prop) behind an auto-hiding
+control overlay (`expo-linear-gradient` scrim behind the top bar and bottom button cluster),
+while SVG styles keep the original centered/boxed `stage` layout unchanged (see
+`docs/concepts/feature-fullscreen-immersive-timer.md`). Controls fade out ~2s after
+start/resume with no touch, reappear on tap, and stay visible whenever the timer is paused,
+distracted, or finished. The countdown clock's own visibility (`Hide clock`/`Show clock`) is
+a separate toggle from the auto-hiding controls — it doesn't fade with them.
 
 **Design tokens**: `constants/theme.ts` (`colors`, `fonts`, `STYLE_OPTIONS`,
 `CATEGORY_OPTIONS`) is the only source of colors/typography — don't inline hex values or font
