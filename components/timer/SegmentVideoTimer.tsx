@@ -3,10 +3,23 @@ import { StyleSheet, View } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
-import type { SegmentThemeConfig } from '@/lib/timerThemes';
-
 /** Neutral warm gray used as the desaturation-dip tint — not a design token, just an overlay color. */
 const DISTRACT_TINT = '#8f8a82';
+
+/**
+ * Unused since the 2026-09-05 migration to static-image themes (`StaticImageTimer.tsx`,
+ * see docs/concepts/feature-static-theme-images.md) — kept in place, same as `BanyanMonk.tsx`
+ * was after the prior migration, not yet deleted. `SegmentThemeConfig` no longer exists in
+ * lib/timerThemes.ts, so its shape is inlined here to keep this file self-contained.
+ */
+type SegmentThemeConfig = {
+  id: string;
+  videoSource: number;
+  videoDurationMs: number;
+  introEndMs: number;
+  distractDesatTargetPct?: number;
+  distractCueMs?: number;
+};
 
 type Props = {
   theme: SegmentThemeConfig;
@@ -14,7 +27,7 @@ type Props = {
   progress: number;
   isPaused: boolean;
   isComplete: boolean;
-  /** Total session duration in seconds — used to time the outro trigger. */
+  /** Total session duration in seconds — used to time the resume-to-end trigger. */
   totalDurationSec: number;
   /** Bump this (e.g. increment a counter) each time the user taps "Got distracted". */
   distractSignal?: number;
@@ -22,11 +35,12 @@ type Props = {
   fullBleed?: boolean;
 };
 
-type Phase = 'intro' | 'loop' | 'outro';
+type Phase = 'intro' | 'hold' | 'resume';
 
 /**
- * Theme-agnostic intro/loop/outro segment player — mostly native play()/pause(), seeking only
- * at segment boundaries. See docs/concepts/feature-timer-theme-intro-loop-outro.md.
+ * Theme-agnostic intro/freeze-hold/resume-to-end segment player — mostly native
+ * play()/pause(), with at most one seek in normal operation (session start). See
+ * docs/concepts/feature-frame-sequence-animation.md.
  */
 export function SegmentVideoTimer({
   theme,
@@ -44,7 +58,7 @@ export function SegmentVideoTimer({
     p.timeUpdateEventInterval = 0.25;
   });
 
-  const outroDurationSec = (theme.videoDurationMs - theme.outroStartMs) / 1000;
+  const resumeDurationSec = (theme.videoDurationMs - theme.introEndMs) / 1000;
   const phase = useRef<Phase>('intro');
   const lastDistractSignal = useRef(distractSignal);
   const started = useRef(false);
@@ -60,24 +74,22 @@ export function SegmentVideoTimer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pause/resume tracks timer state directly — no seeking involved.
+  // Pause/resume tracks timer state directly — no seeking involved. During the hold, the
+  // player is already paused, so a user pause/resume here is a no-op that leaves it frozen.
   useEffect(() => {
     if (isComplete) return; // finish handling below takes over
     if (isPaused) {
       player.pause();
-    } else if (started.current) {
+    } else if (started.current && phase.current !== 'hold') {
       player.play();
     }
   }, [isPaused, isComplete, player]);
 
-  // "Got distracted" — restart the current loop cycle, paired with a brief desaturation dip.
+  // "Got distracted" — brief desaturation dip over whatever's on screen (frozen hold frame or
+  // live intro/resume playback). No seeking, since there's no loop to restart.
   useEffect(() => {
     if (distractSignal === lastDistractSignal.current) return;
     lastDistractSignal.current = distractSignal;
-    if (phase.current === 'loop') {
-      player.currentTime = theme.loopStartMs / 1000;
-      player.play();
-    }
 
     const cueMs = theme.distractCueMs ?? 800;
     const downMs = Math.round(cueMs * 0.375); // ~300ms of 800
@@ -85,7 +97,7 @@ export function SegmentVideoTimer({
     const upMs = cueMs - downMs - holdMs;
     // Desaturation isn't directly available as a video filter in expo-video, so this
     // approximates it with a semi-transparent gray tint crossfaded over the video — see
-    // "Got Distracted — Visual Treatment" in feature-timer-theme-intro-loop-outro.md.
+    // "Got Distracted — Visual Treatment" in feature-frame-sequence-animation.md.
     const targetPct = theme.distractDesatTargetPct ?? 40;
     const overlayOpacity = ((100 - targetPct) / 100) * 0.55;
     desatOverlay.value = withSequence(
@@ -98,39 +110,34 @@ export function SegmentVideoTimer({
 
   const desatStyle = useAnimatedStyle(() => ({ opacity: desatOverlay.value }));
 
-  // Segment-boundary transitions, driven off native playback position.
+  // Segment-boundary transitions, driven off native playback position and remaining time.
   useEffect(() => {
     const sub = player.addListener('timeUpdate', ({ currentTime }) => {
       if (isComplete || isPaused) return;
       const ms = currentTime * 1000;
 
       if (phase.current === 'intro' && ms >= theme.introEndMs - 33) {
-        phase.current = 'loop';
-        if (theme.loopStartMs !== theme.introEndMs) {
-          player.currentTime = theme.loopStartMs / 1000;
-        }
+        phase.current = 'hold';
+        player.pause(); // no seek — already sitting on the intro's last frame
         return;
       }
 
-      if (phase.current === 'loop' && ms >= theme.loopEndMs - 33) {
+      if (phase.current === 'hold') {
         const remainingSec = totalDurationSec * progress;
-        if (remainingSec <= outroDurationSec) {
-          phase.current = 'outro';
-          player.currentTime = theme.outroStartMs / 1000;
-        } else {
-          player.currentTime = theme.loopStartMs / 1000;
+        if (remainingSec <= resumeDurationSec) {
+          phase.current = 'resume';
+          player.play(); // no seek — resumes exactly from introEndMs
         }
       }
     });
     return () => sub.remove();
-  }, [player, theme, progress, totalDurationSec, outroDurationSec, isComplete, isPaused]);
+  }, [player, theme, progress, totalDurationSec, resumeDurationSec, isComplete, isPaused]);
 
-  // Finish (natural or manual/early) — jump straight into the outro and let it play out.
+  // Finish (natural or manual/early) — play through from wherever it's paused/frozen to the end.
   useEffect(() => {
     if (!isComplete) return;
-    if (phase.current === 'outro') return;
-    phase.current = 'outro';
-    player.currentTime = theme.outroStartMs / 1000;
+    if (phase.current === 'resume') return;
+    phase.current = 'resume';
     player.play();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete]);
