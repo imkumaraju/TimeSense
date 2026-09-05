@@ -69,6 +69,13 @@ User taps "Finish" (app/timer/active.tsx)
 - **This is a new native dependency** — same build-impact category as `expo-video` /
   `expo-linear-gradient` / `expo-image` before it: needs a fresh EAS build to take effect, not
   just a JS-only redeploy.
+- **Pinned to `react-native-google-mobile-ads@16.0.0`, not the latest 16.5.0** (2026-09-05):
+  the first `sys` build with 16.5.0 failed —
+  `:react-native-google-mobile-ads:compileReleaseKotlin` errored because that version bundles
+  `play-services-ads:25.4.0`, whose Kotlin metadata (2.3.0) is newer than what RN 0.81/Expo
+  SDK 54's Kotlin toolchain (2.1.0) can read. `16.0.0` bundles the older `play-services-ads
+  :24.6.0`, which compiles cleanly. Re-check this pin when upgrading Expo SDK/RN versions —
+  a newer Kotlin toolchain may make a newer `react-native-google-mobile-ads` safe again.
 
 ## Pricing
 - **Monthly:** $10.00 — **Annual:** $100.00 (≈2 months free vs. paying monthly all year:
