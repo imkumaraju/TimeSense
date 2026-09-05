@@ -1,13 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  AppState,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VisualTimer } from '@/components/timer/VisualTimer';
 import { TsButton } from '@/components/ui/TsButton';
 import { colors, fonts } from '@/constants/theme';
-import { isVideoScrubStyle } from '@/lib/timerThemes';
+import { isStaticImageStyle } from '@/lib/timerThemes';
 import { createTask } from '@/lib/tasksDb';
 import { pulseMilestoneFeedback } from '@/lib/timerFeedback';
 import { formatClock } from '@/lib/timerMath';
@@ -28,7 +20,6 @@ const CONTROLS_FADE_MS = 250;
 
 export default function ActiveTimerScreen() {
   const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
   const snapshot = useActiveTimerStore((s) => s.snapshot);
   const meta = useActiveTimerStore((s) => s.meta);
   const milestoneFlags = useActiveTimerStore((s) => s.milestoneFlags);
@@ -165,16 +156,11 @@ export default function ActiveTimerScreen() {
     scheduleIdleHide();
   };
 
-  // Moon / Monk / Cat: full content width, compact height; others stay square-ish
-  const contentWidth = Math.max(260, windowWidth - 40);
-  const visualSize =
-    meta.visualStyle === 'moon' ||
-    meta.visualStyle === 'monk' ||
-    meta.visualStyle === 'cat'
-      ? contentWidth
-      : 220;
+  // Non-static-image styles (pie/bar/ring) stay square-ish in the boxed `stage` layout.
+  // Static-image styles (pizza/plant/monk/cat/moon) go full-bleed immersive below instead.
+  const visualSize = 220;
 
-  const immersive = isVideoScrubStyle(meta.visualStyle);
+  const immersive = isStaticImageStyle(meta.visualStyle);
 
   const clock = meta.showDigital ? (
     <Text style={styles.clock}>{formatClock(derived.remainingSeconds)}</Text>
