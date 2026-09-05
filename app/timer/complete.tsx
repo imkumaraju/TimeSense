@@ -14,13 +14,8 @@ import { TsChip } from '@/components/ui/TsChip';
 import { TsSectionLabel } from '@/components/ui/TsSectionLabel';
 import { colors, fonts } from '@/constants/theme';
 import { syncNow } from '@/lib/syncService';
-import { recordStreakOnTaskComplete } from '@/lib/streakService';
-import { localDateString } from '@/lib/streakLogic';
 import { completeTask } from '@/lib/tasksDb';
-import {
-  markWidgetOneDayFlags,
-  recomputeAndWriteWidgetSnapshot,
-} from '@/lib/widgetSnapshot';
+import { recomputeAndWriteWidgetSnapshot } from '@/lib/widgetSnapshot';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { MoodTag } from '@/types/task';
@@ -78,11 +73,6 @@ export default function TaskCompleteScreen() {
     try {
       const mins = clampMinutes(actualMinutes);
       await completeTask(meta.taskId, mins * 60, Date.now(), mood);
-      const streakResult = await recordStreakOnTaskComplete(user?.id ?? null);
-      await markWidgetOneDayFlags(localDateString(), {
-        freezeSpent: streakResult.freezeSpent,
-        freezeEarned: streakResult.freezeEarned,
-      });
       void recomputeAndWriteWidgetSnapshot(user?.id ?? null);
       clear();
       if (mode === 'signed_in') {

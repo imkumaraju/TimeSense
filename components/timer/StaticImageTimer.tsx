@@ -1,4 +1,5 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useEffect, useRef } from 'react';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
@@ -46,7 +47,7 @@ export function StaticImageTimer({ theme, distractSignal = 0, size = 220, fullBl
   if (fullBleed) {
     return (
       <View style={StyleSheet.absoluteFill}>
-        <Image source={theme.imageSource} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={theme.imageSource} style={StyleSheet.absoluteFill} contentFit="cover" />
         <Animated.View
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, styles.distractTint, desatStyle]}
@@ -57,7 +58,7 @@ export function StaticImageTimer({ theme, distractSignal = 0, size = 220, fullBl
 
   return (
     <View style={[styles.wrap, { width: size, height: size }]}>
-      <Image source={theme.imageSource} style={{ width: size, height: size }} resizeMode="cover" />
+      <Image source={theme.imageSource} style={{ width: size, height: size }} contentFit="cover" />
       <Animated.View pointerEvents="none" style={[styles.distractTint, desatStyle]} />
     </View>
   );

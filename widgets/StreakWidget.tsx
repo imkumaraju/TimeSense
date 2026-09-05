@@ -5,8 +5,9 @@
  *
  * The mascot is the real Chibi Tabby design (lib/chibiTabbySvg.ts, ported from
  * chibi-tabby-widget-design.html) rendered as live SVG via SvgWidget — not a static PNG
- * export. Layout mirrors the design doc's widget tile: streak badge top-left, task/sub lines
- * bottom-left over a scrim.
+ * export. Layout mirrors the design doc's widget tile: task/sub lines bottom-left over a
+ * scrim. The streak badge that used to sit top-left was removed 2026-09-05 along with the
+ * rest of the streak UI (see docs/TODO.md) — streaks are being redesigned, not gone for good.
  */
 import Constants from 'expo-constants';
 import {
@@ -36,29 +37,14 @@ function tapTarget(snapshot: WidgetSnapshot): { clickAction: string; clickAction
   };
 }
 
-const STREAK_ICON: Record<WidgetSnapshot['mood'], string> = {
-  calm: '🔥',
-  alert: '🔥',
-  worried: '⚠️',
-  sad: '',
-  completed: '🔥',
-  resting: '🔥',
-  freeze: '🧊',
-  happy: '🏆',
-};
-
 type WidgetSize = 'small' | 'medium';
 
-/** Below this dp width there isn't room for the task/sub lines — fall back to streak-only (§10.3). */
+/** Below this dp width there isn't room for the task/sub lines — fall back to mascot-only (§10.3). */
 export function widgetSizeFor(widthDp: number): WidgetSize {
   return widthDp < 150 ? 'small' : 'medium';
 }
 
 export function StreakWidget(snapshot: WidgetSnapshot, size: WidgetSize = 'medium') {
-  const streakLabel = STREAK_ICON[snapshot.mood]
-    ? `${STREAK_ICON[snapshot.mood]} ${snapshot.streakCount}`
-    : `${snapshot.streakCount}`;
-
   return (
     <OverlapWidget
       {...tapTarget(snapshot)}
@@ -74,15 +60,10 @@ export function StreakWidget(snapshot: WidgetSnapshot, size: WidgetSize = 'mediu
           height: 'match_parent',
           width: 'match_parent',
           flexDirection: 'column',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-end',
           padding: 10,
         }}
       >
-        <TextWidget
-          text={streakLabel}
-          style={{ fontSize: 14, fontWeight: 'bold', color: colors.cream }}
-        />
-
         {size === 'medium' && (
           <FlexWidget
             style={{

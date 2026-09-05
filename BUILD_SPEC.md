@@ -424,7 +424,7 @@ section 5's build order, not part of v1.
 | 7.1 | **Learned Defaults** | ✅ (hint on New Timer by name) |
 | 7.2 | **Interruption Tracking** | ✅ (pause gaps; insights later) |
 | 7.3 | **Home Screen Widget** (Chibi Tabby mood widget, §10) | ⬜ |
-| 7.4 | **Re-engagement / Anti-Abandonment** | ✅ (streaks ✅; gentle re-entry nudge ✅) |
+| 7.4 | **Re-engagement / Anti-Abandonment** | 🔶 (streaks built, then pulled from UI 2026-09-05 for a redesign — see `docs/BACKLOG.md`; gentle re-entry nudge ✅) |
 | 7.5 | **Recurring Routines** (§9) | ✅ |
 
 ### 7.1 Learned Defaults
@@ -457,6 +457,12 @@ standard Expo managed workflow (config plugins / a custom dev client) — budget
 it than the other v1.5 items.
 
 ### 7.4 Re-engagement / Anti-Abandonment
+
+> **2026-09-05:** the streak/freeze mechanic described below was built per this spec, then
+> pulled from every user-facing surface (Home, Settings, the widget) pending a product
+> redesign — the mechanic itself wasn't working out. The algorithm/DB schema are untouched; see
+> `docs/BACKLOG.md` → "Deferred: Rethink streaks" for what's kept vs. open for the redesign.
+> The gentle re-entry nudge below is unaffected and still live.
 
 - **Forgiving streaks** — a streak counter with a "streak freeze" or grace day so one missed
   day doesn't zero out weeks of momentum. Store `streak_count`, `freezes_available`,
@@ -548,6 +554,13 @@ only — no Realtime and no push infrastructure.
 ---
 
 ## 10. Home Screen Widget (Chibi Tabby)
+
+> **2026-09-05:** the streak-driven moods described below (`sad`/`happy`/`freeze`, all
+> triggered by streak/freeze state) were removed from `lib/widgetSnapshot.ts`'s
+> `computeWidgetMood()` — the widget now only reflects today's due Routine, not streak status.
+> `widgets/StreakWidget.tsx`'s streak badge was removed too. The widget itself, and the mascot
+> art for all 8 moods (`lib/chibiTabbySvg.ts`), are untouched and still render — see
+> `docs/BACKLOG.md` → "Deferred: Rethink streaks" for what a redesign might reconnect here.
 
 Duolingo-style home screen widget: a chibi-proportioned cat mascot that reflects streak status
 and today's due Routine, in 8 mood states. Design source: `chibi-tabby-widget-design.html`

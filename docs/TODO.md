@@ -5,8 +5,9 @@ Claude) can pick this up cold — each item has enough context to act without re
 Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUNBOOK.md`,
 `BACKLOG.md`) rather than duplicating them; update *this* file's checkboxes as things move.
 
-**Last updated:** 2026-09-05 (item #11: pizza/plant/monk/cat migrated from video/SVG themes to
-static illustrated images; item #12 added)
+**Last updated:** 2026-09-05 (item #12: pizza/plant/monk/cat/moon migrated to static images,
+`expo-image` fix for an over-zoom bug; item #13: all streak/freeze UI removed, logic parked in
+`docs/BACKLOG.md` for redesign)
 
 ---
 
@@ -187,18 +188,67 @@ RevenueCat dashboard screenshots on 2026-08-22:
 - **Source images landed:** `assets/timer-themes/{pizza,plant,monk,cat,moon}/<theme>.png`,
   portrait 9:16, ~5.6-7MB each (PNG, not the spec's recommended WebP — see the spec doc's
   "Implementation Notes" section).
+- **On-device bug found + fixed (2026-09-05):** first `sys` preview build showed all five
+  themes badly over-zoomed full-bleed (e.g. monk showed only the tree canopy, monk figure
+  never visible) — traced to React Native core `<Image>`'s `resizeMode="cover"` not reliably
+  covering when sized via `StyleSheet.absoluteFill`. Fixed by switching
+  `StaticImageTimer.tsx` to `expo-image`'s `<Image contentFit="cover">` (new dependency, added
+  via `npx expo install expo-image`) — same API already used for `expo-video`. **This adds a
+  new native module, so it needs a fresh EAS build** (same as `expo-video`/
+  `expo-linear-gradient` did) — not yet built/tested on-device as of this note.
 - **Not yet done:**
+  - [ ] Build + run on-device with the `expo-image` fix: confirm the fullBleed crop now looks
+        correct (near-full image height, mild side-crop) for all five themes, and the
+        desaturation-dip cue still looks right.
   - [ ] Re-encode the five PNGs to WebP (or JPEG) per the spec's size guidance — current PNGs
         are noticeably larger than the ~2-6MB video assets they replaced.
-  - [ ] Run on-device for all five themes: confirm the desaturation-dip cue looks right, and
-        the newly-immersive `pizza`/`cat`/`moon` full-bleed layout doesn't clip/crop badly on a
-        real device (they were centered/boxed before, never full-bleed).
   - [ ] `SegmentVideoTimer.tsx`, `CatLoaf.tsx`, `MoonArc.tsx`, and the old `monk.mp4`/`plant.mp4`
         video assets are now unused — left in place per repo convention (same as
         `BanyanMonk.tsx` before them); delete once the image versions are confirmed as the
         permanent replacement.
   - [ ] Confirm usage rights/commercial terms for all five source images before a production
         build ships them.
+
+### 13. Streaks removed from UI/widget — logic parked in backlog for redesign
+- **What happened (2026-09-05):** streaks are getting rethought as a feature, so all
+  user-facing streak/freeze surfaces were removed while the DB schema and pure algorithm stay
+  in place untouched. See `docs/BACKLOG.md` → "Deferred: Rethink streaks" for the design-level
+  open questions.
+- **Removed:**
+  - `app/(tabs)/index.tsx` — Home screen streak badge (state + render + now-unused `badge*`
+    styles)
+  - `app/(tabs)/settings.tsx` — "Streak" row, "Streak freezes" row, and the "Watch an ad for a
+    streak freeze" card (+ now-unused `rowCardDisabled`/`rowLabelMuted`/`rowSubMuted` styles)
+  - `app/timer/complete.tsx` — no longer calls `recordStreakOnTaskComplete()` or
+    `markWidgetOneDayFlags()` on task completion, so `streak_count`/`freezes_available`/
+    `last_active_date` simply stop advancing from whatever value they're frozen at
+  - `lib/widgetSnapshot.ts` — `computeWidgetMood()` trimmed to routine-due-today state only;
+    dropped the `sad`/`happy`/`freeze` streak-driven mood branches, `streakCount` from
+    `WidgetSnapshot`, `markWidgetOneDayFlags()`/`streakLostToday()`/one-day AsyncStorage flags
+    entirely. `ensureLastChanceWidgetTrigger()`'s silent 22:00 notification mechanism stays
+    (still useful for the routine-deadline "worried" mood), just re-worded away from "streak."
+  - `widgets/StreakWidget.tsx` — removed the top-left streak badge (`STREAK_ICON`/
+    `streakLabel`); `lib/chibiTabbySvg.ts`'s mood art for `sad`/`happy`/`freeze` is unreachable
+    now but left in place (harmless, reusable if the redesign wants similar mascot states)
+  - `app.config.js` — Android widget renamed from `name: 'Streak'` / `'TimeSense Streak'` to
+    `name: 'Routine'` / `'TimeSense Routine'` (system-visible in the widget picker) — matched
+    in `lib/widgetSnapshot.ts`'s `requestWidgetUpdate({ widgetName: 'Routine' })` call. **This
+    is a native config change and needs a fresh EAS build**, same as the image-timer fix above.
+  - `docs/PLAY_STORE_LISTING.md` — dropped the streak-widget bullet from the feature list;
+    flagged the existing screenshot set as stale (screenshot 1 shows the now-removed streak
+    badge) pending a re-capture before submission.
+  - `lib/__tests__/widgetSnapshot.test.ts` — rewritten for the trimmed `computeWidgetMood()`
+    signature (dropped the streak-lost/milestone/freeze test cases).
+- **Deliberately left alone:** `lib/streakLogic.ts`, `lib/streakService.ts` (unused by the app
+  now, but not deleted), all `supabase/migrations/*.sql` streak columns,
+  `lib/__tests__/streakLogic.test.ts`, `docs/concepts/streak-logic-feature-spec.md`. `useProfile.ts`
+  still calls `getStreakProfile()` for its `isPlus` entitlement check — that's just how it
+  fetches the local `Profile` row, not a streak display, so it stays as-is.
+- **Not yet done:**
+  - [ ] Build + test on-device with the widget's new name/content (needs the same fresh EAS
+        build as item #12's `expo-image` fix — bundle both into one build)
+  - [ ] Re-capture the Play Store screenshot set (item #7) now that the Home streak badge is
+        gone
 
 ---
 

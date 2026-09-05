@@ -1,5 +1,6 @@
 /**
- * Home screen widget mood + snapshot (BUILD_SPEC.md §10).
+ * Home screen widget mood + snapshot (BUILD_SPEC.md §10 — streak-driven moods removed
+ * 2026-09-05, see docs/TODO.md; streak logic is being redesigned, not gone for good).
  * Pure computation split from I/O, same shape as streakService.ts / streakLogic.ts.
  * The widget extension never runs this logic itself — the app computes once and
  * writes the result (compute-don't-store pattern, same as Insights/Routines).
@@ -9,21 +10,12 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { localDateString } from '@/lib/streakLogic';
-import type { Profile, Routine } from '@/types/task';
+import type { Routine } from '@/types/task';
 
-export type WidgetMood =
-  | 'calm'
-  | 'alert'
-  | 'worried'
-  | 'sad'
-  | 'completed'
-  | 'resting'
-  | 'freeze'
-  | 'happy';
+export type WidgetMood = 'calm' | 'alert' | 'worried' | 'sad' | 'completed' | 'resting' | 'freeze' | 'happy';
 
 export type WidgetSnapshot = {
   mood: WidgetMood;
-  streakCount: number;
   routineName: string | null;
   /** Paired with routineName — lets a widget tap deep-link straight into that routine's timer (§10.7). */
   dueRoutineId: string | null;
@@ -31,52 +23,6 @@ export type WidgetSnapshot = {
   taskLine: string;
   subLine: string;
 };
-
-const FREEZE_SAVED_DATE_KEY = 'timesense.widget.freeze_saved_date';
-const MILESTONE_SHOWN_DATE_KEY = 'timesense.widget.milestone_shown_date';
-
-/**
- * Call once from recordStreakOnTaskComplete's result. freezeSpent/freezeEarned are one-shot
- * events tied to the moment of completion, so they need a stored "show for one day" flag.
- * A streak *reset* doesn't need one — it's re-derivable any time by peeking at
- * applyStreakOnTaskComplete without persisting (see streakLostToday() below), because a
- * reset is really just "the gap since lastActiveDate is too large," which stays true
- * regardless of when you check it.
- */
-export async function markWidgetOneDayFlags(
-  today: string,
-  flags: { freezeSpent: boolean; freezeEarned: boolean },
-): Promise<void> {
-  if (flags.freezeSpent) {
-    await AsyncStorage.setItem(FREEZE_SAVED_DATE_KEY, today);
-  }
-  if (flags.freezeEarned) {
-    await AsyncStorage.setItem(MILESTONE_SHOWN_DATE_KEY, today);
-  }
-}
-
-/** Read-only: would evaluating the streak today produce a reset, without recording anything? */
-async function streakLostToday(
-  profile: Pick<Profile, 'streakCount' | 'freezesAvailable' | 'lastActiveDate'>,
-  today: string,
-): Promise<boolean> {
-  if (profile.lastActiveDate == null || profile.lastActiveDate === today) return false;
-  const { applyStreakOnTaskComplete } = await import('@/lib/streakLogic');
-  return applyStreakOnTaskComplete(
-    {
-      streakCount: profile.streakCount,
-      freezesAvailable: profile.freezesAvailable,
-      lastActiveDate: profile.lastActiveDate,
-    },
-    today,
-  ).reset;
-}
-
-async function consumeOneDayFlag(key: string, today: string): Promise<boolean> {
-  const stored = await AsyncStorage.getItem(key);
-  if (stored !== today) return false;
-  return true;
-}
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
@@ -89,14 +35,10 @@ function formatReminderTime(hour: number, minute: number): string {
 }
 
 export type MoodInputs = {
-  profile: Pick<Profile, 'streakCount' | 'lastActiveDate'>;
   /** Routine due today (§9.3), nearest-upcoming if several — open question in BUILD_SPEC §10.9. */
   dueRoutine: Routine | null;
   /** True if dueRoutine already has a completed task row today (routineId + endedAt). */
   dueRoutineCompletedToday: boolean;
-  streakLostToday: boolean;
-  freezeSavedToday: boolean;
-  milestoneToday: boolean;
   now: Date;
   /** Hours-before-reminder window that flips Calm → Reminder. */
   reminderWindowHours?: number;
@@ -104,38 +46,25 @@ export type MoodInputs = {
   lastChanceWindowHours?: number;
 };
 
-/** Pure state-table implementation of BUILD_SPEC.md §10.2. Unit-test this directly. */
+/**
+ * Pure state-table implementation, trimmed down from BUILD_SPEC.md §10.2 — the streak-driven
+ * moods (`sad` on a lost streak, `happy` on a milestone, `freeze` on a saved freeze) are no
+ * longer produced here; only routine-due-today state drives the mood while streaks are being
+ * redesigned. `WidgetMood`/`chibiTabbySvg` still support those values (unreachable, not yet
+ * deleted) so re-wiring them later doesn't need new mascot art.
+ */
 export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
   const {
-    profile,
     dueRoutine,
     dueRoutineCompletedToday,
-    streakLostToday,
-    freezeSavedToday,
-    milestoneToday,
     now,
     reminderWindowHours = 3,
     lastChanceWindowHours = 2,
   } = input;
 
-  const streakCount = profile.streakCount;
-
-  if (streakLostToday) {
-    return {
-      mood: 'sad',
-      streakCount,
-      routineName: null,
-      dueRoutineId: null,
-      reminderTime: null,
-      taskLine: 'Start a new streak today',
-      subLine: 'Yesterday was missed',
-    };
-  }
-
   if (dueRoutine && dueRoutineCompletedToday) {
     return {
       mood: 'completed',
-      streakCount,
       routineName: dueRoutine.name,
       dueRoutineId: dueRoutine.id,
       reminderTime: formatReminderTime(dueRoutine.reminderHour, dueRoutine.reminderMinute),
@@ -144,34 +73,9 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
     };
   }
 
-  if (milestoneToday) {
-    return {
-      mood: 'happy',
-      streakCount,
-      routineName: dueRoutine?.name ?? null,
-      dueRoutineId: dueRoutine?.id ?? null,
-      reminderTime: null,
-      taskLine: `${streakCount}-day streak!`,
-      subLine: 'New freeze earned',
-    };
-  }
-
-  if (freezeSavedToday) {
-    return {
-      mood: 'freeze',
-      streakCount,
-      routineName: dueRoutine?.name ?? null,
-      dueRoutineId: dueRoutine?.id ?? null,
-      reminderTime: null,
-      taskLine: 'A freeze covered yesterday',
-      subLine: '1 freeze left',
-    };
-  }
-
   if (!dueRoutine) {
     return {
       mood: 'resting',
-      streakCount,
       routineName: null,
       dueRoutineId: null,
       reminderTime: null,
@@ -198,11 +102,10 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
     const hoursLeft = Math.max(1, Math.ceil(msUntilEndOfDay / hourMs));
     return {
       mood: 'worried',
-      streakCount,
       routineName: dueRoutine.name,
       dueRoutineId: dueRoutine.id,
       reminderTime: reminderTimeLabel,
-      taskLine: `Streak ends in ${hoursLeft} hours!`,
+      taskLine: `${hoursLeft} hours left today`,
       subLine: `${dueRoutine.name} not started`,
     };
   }
@@ -210,7 +113,6 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
   if (msUntilReminder <= reminderWindowHours * hourMs) {
     return {
       mood: 'alert',
-      streakCount,
       routineName: dueRoutine.name,
       dueRoutineId: dueRoutine.id,
       reminderTime: reminderTimeLabel,
@@ -221,7 +123,6 @@ export function computeWidgetMood(input: MoodInputs): WidgetSnapshot {
 
   return {
     mood: 'calm',
-    streakCount,
     routineName: dueRoutine.name,
     dueRoutineId: dueRoutine.id,
     reminderTime: reminderTimeLabel,
@@ -272,16 +173,13 @@ export async function recomputeAndWriteWidgetSnapshot(
   userId: string | null | undefined,
   now: Date = new Date(),
 ): Promise<WidgetSnapshot> {
-  const [{ getLocalProfile }, { listActiveRoutinesDueToday }, { listRecentTasks }] =
-    await Promise.all([
-      import('@/lib/tasksDb'),
-      import('@/lib/routinesDb'),
-      import('@/lib/tasksDb'),
-    ]);
-  const { profileIdForAuth } = await import('@/lib/streakService');
+  void userId; // kept in the signature for call-site compatibility; unused now that mood is routine-only
+  const [{ listActiveRoutinesDueToday }, { listRecentTasks }] = await Promise.all([
+    import('@/lib/routinesDb'),
+    import('@/lib/tasksDb'),
+  ]);
 
   const today = localDateString(now);
-  const profile = await getLocalProfile(profileIdForAuth(userId));
   const dueRoutines = await listActiveRoutinesDueToday(now);
   const dueRoutine = dueRoutines[0] ?? null;
 
@@ -296,24 +194,9 @@ export async function recomputeAndWriteWidgetSnapshot(
     );
   }
 
-  const profileForMood = profile ?? {
-    streakCount: 0,
-    freezesAvailable: 0,
-    lastActiveDate: null,
-  };
-  const lostToday =
-    !dueRoutineCompletedToday && (await streakLostToday(profileForMood, today));
-
-  const freezeSavedToday = await consumeOneDayFlag(FREEZE_SAVED_DATE_KEY, today);
-  const milestoneToday = await consumeOneDayFlag(MILESTONE_SHOWN_DATE_KEY, today);
-
   const snapshot = computeWidgetMood({
-    profile: profileForMood,
     dueRoutine,
     dueRoutineCompletedToday,
-    streakLostToday: lostToday,
-    freezeSavedToday,
-    milestoneToday,
     now,
   });
 
@@ -345,7 +228,7 @@ export async function writeWidgetSnapshot(snapshot: WidgetSnapshot): Promise<voi
     const { requestWidgetUpdate } = await import('react-native-android-widget');
     const { StreakWidget, widgetSizeFor } = await import('@/widgets/StreakWidget');
     await requestWidgetUpdate({
-      widgetName: 'Streak',
+      widgetName: 'Routine',
       renderWidget: (info) => StreakWidget(snapshot, widgetSizeFor(info.width)),
     });
   } catch {

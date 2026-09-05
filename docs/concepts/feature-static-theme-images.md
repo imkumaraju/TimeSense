@@ -32,7 +32,7 @@ Everything in `feature-frame-sequence-animation.md` is no longer applicable, spe
 4. Store per-theme image under `assets/timer-themes/<theme>/<theme>.webp` (or `.jpg`).
 
 ## New Rendering Approach (React Native)
-- Replace the `<Video>` component from the prior spec with a standard `<Image>` (or `FastImage` for better caching behavior), `resizeMode="cover"`, filling the screen the same way the video did.
+- Use `expo-image`'s `<Image>` (not React Native core `<Image>` — see Implementation Notes: core `<Image>` produced a badly over-zoomed crop on real devices with these source images), `contentFit="cover"`, filling the screen the same way the video did.
 - No preloading/priming logic needed beyond normal image caching — this removes the "first decode stall" concern that applied to video.
 - The "got distracted" desaturation cue applies as a filter/overlay on top of the `<Image>`, same mechanism as before, just with a static image underneath instead of a video frame.
 
@@ -65,6 +65,7 @@ The following themes have generation prompts already drafted (anime/illustrated 
 - `lib/timerThemes.ts` now exports `StaticThemeConfig` + a `staticThemes` registry (`pizza`, `plant`, `monk`, `cat`, `moon`) and `isStaticImageStyle()`, replacing `SegmentThemeConfig`/`segmentThemes`/`isVideoScrubStyle()`. `components/timer/StaticImageTimer.tsx` replaces `SegmentVideoTimer.tsx` as the renderer wired into `VisualTimer.tsx`.
 - `SegmentVideoTimer.tsx` and the old theme videos (`assets/timer-themes/{monk,plant}/*.mp4`) are left in place but unused, same as `BanyanMonk.tsx` was after the prior migration — not yet deleted.
 - `pie`'s `EatingPizza` SVG component stays in use (no separate asset for it); `cat`'s old `CatLoaf.tsx` and `moon`'s old `MoonArc.tsx` are now both unused the same way `BanyanMonk.tsx` was; `bar`/`ring` are untouched (still SVG, no static image assets provided for them).
+- **On-device bug found and fixed (2026-09-05):** the first `sys` preview build showed all five static-image themes badly over-zoomed in the full-bleed immersive layout — e.g. the monk theme showed only the tree canopy filling the entire screen with the monk figure itself never visible, which the `cover` math for these images/screen sizes doesn't predict (should have shown near-full height with only mild side cropping). Root cause traced to React Native core `<Image>`'s `resizeMode="cover"` not reliably computing cover-fit for these large (5.6-7MB) PNGs when sized via `StyleSheet.absoluteFill` (edge insets only, no explicit numeric width/height). Fixed by switching `StaticImageTimer.tsx` to `expo-image`'s `<Image>` with `contentFit="cover"` instead — added as a new dependency (`npx expo install expo-image`), same API shape already used successfully for `expo-video`'s `contentFit`. This requires a fresh native build (new native module), same as `expo-video`/`expo-linear-gradient` did previously.
 
 ## Open Questions
 - Whether any theme might later want a very subtle, purely decorative motion layer (e.g. a gentle particle drift via CSS/Reanimated over the static image) despite the base asset being a still image — this doc assumes fully static for now, but a lightweight ambient overlay wouldn't reintroduce the video complexity being removed here.

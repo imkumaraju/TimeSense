@@ -10,7 +10,6 @@ import { StreakWidget, widgetSizeFor } from '@/widgets/StreakWidget';
 
 const RESTING_FALLBACK = {
   mood: 'resting' as const,
-  streakCount: 0,
   routineName: null,
   dueRoutineId: null,
   reminderTime: null,

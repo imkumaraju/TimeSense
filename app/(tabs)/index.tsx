@@ -18,7 +18,6 @@ import { TsSectionLabel } from '@/components/ui/TsSectionLabel';
 import { colors, fonts } from '@/constants/theme';
 import { deleteRoutineFully, pauseRoutine } from '@/lib/routineNotifications';
 import { listActiveRoutinesDueToday } from '@/lib/routinesDb';
-import { getStreakProfile } from '@/lib/streakService';
 import { listRecentTasks } from '@/lib/tasksDb';
 import { formatClock } from '@/lib/timerMath';
 import { namesFromUserMetadata } from '@/lib/userNames';
@@ -55,16 +54,11 @@ export default function HomeScreen() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [routinesDueToday, setRoutinesDueToday] = useState<Routine[]>([]);
-  const [streak, setStreak] = useState(0);
-  const [freezes, setFreezes] = useState(0);
 
   const reload = useCallback(async () => {
     const rows = await listRecentTasks(20);
     setTasks(rows.filter((t) => t.actualSeconds != null).slice(0, 8));
     setRoutinesDueToday(await listActiveRoutinesDueToday());
-    const profile = await getStreakProfile(user?.id ?? null);
-    setStreak(profile?.streakCount ?? 0);
-    setFreezes(profile?.freezesAvailable ?? 0);
     void recomputeAndWriteWidgetSnapshot(user?.id ?? null);
   }, [user?.id]);
 
@@ -79,18 +73,6 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <Text style={styles.greeting}>{greeting}</Text>
-      {streak > 0 ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {streak}-day streak
-            {freezes > 0 ? ` · ${freezes} freeze${freezes === 1 ? '' : 's'}` : ''}
-          </Text>
-        </View>
-      ) : (
-        <View style={[styles.badge, styles.badgeMuted]}>
-          <Text style={styles.badgeTextMuted}>Start a streak</Text>
-        </View>
-      )}
 
       <TsButton
         label="+ New Timer"
@@ -228,29 +210,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     color: colors.ink,
     marginBottom: 10,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.basil,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    marginBottom: 8,
-  },
-  badgeMuted: {
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  badgeText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    color: colors.cream,
-  },
-  badgeTextMuted: {
-    fontFamily: fonts.bodySemi,
-    fontSize: 12,
-    color: colors.muted,
   },
   chips: {
     flexDirection: 'row',

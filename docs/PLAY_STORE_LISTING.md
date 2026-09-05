@@ -32,7 +32,7 @@ FEATURES
 • Bespoke full-screen visual timers — no digital countdown by default
 • Predicted-vs-actual duration tracking that learns your patterns over time
 • Recurring routines with reminders and scheduled notifications
-• A home screen widget that reflects your streak at a glance
+• A home screen widget that shows today's routine at a glance
 • Works fully offline in guest mode — sign in only if you want cross-device sync
 • Zero-friction by design: starting a timer is one tap from Home, task name
   and category are always optional
@@ -71,13 +71,13 @@ Matches what `lib/purchases.ts`, `lib/syncService.ts`, and `app/_layout.tsx` act
 
 - [x] App icon — `docs/store-assets/icon-512.png` (resized from `assets/images/icon.png`, the Cat Loaf mascot)
 - [x] Feature graphic — `docs/store-assets/feature-graphic-1024x500.png` (generated, icon + wordmark on brand orange)
-- [x] Phone screenshots — captured from the `preview` build (2026-08-22), upload directly to Play Console in this order:
-  1. Home screen with an active streak ("Good afternoon, Raju" / "1-day streak · 2 freezes")
+- [ ] Phone screenshots — the set captured from the `preview` build (2026-08-22) is now **stale**: screenshot 1 showed the Home screen's streak badge ("Good afternoon, Raju" / "1-day streak · 2 freezes"), which was removed 2026-09-05 (see `docs/TODO.md` — streaks are being redesigned, not gone for good). Re-capture before submission:
+  1. Home screen (no streak badge anymore)
   2. Active Pizza-style full-screen timer (02:46 remaining)
   3. Insights / "Your patterns" — predicted vs. actual duration chart
   4. Routines list (My schedule for Saturday / Moon day / Leg day)
 
-  These also incidentally confirmed sign-in + sync work end-to-end (personalized greeting, synced streak, a completed timer with predicted/actual both showing) — migration 011 + Google OAuth setup verified working.
+  The original set also incidentally confirmed sign-in + sync work end-to-end (personalized greeting, a completed timer with predicted/actual both showing) — migration 011 + Google OAuth setup verified working; that verification still stands, only the streak-badge screenshot itself needs a retake.
 
 ## Still needed before submission
 
