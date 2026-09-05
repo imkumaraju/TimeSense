@@ -128,9 +128,9 @@ const config = {
       {
         widgets: [
           {
-            name: 'Streak',
-            label: 'TimeSense Streak',
-            description: 'Today’s routine and streak status, at a glance.',
+            name: 'Routine',
+            label: 'TimeSense Routine',
+            description: 'Today’s routine status, at a glance.',
             minWidth: '110dp',
             minHeight: '110dp',
             targetCellWidth: 2,

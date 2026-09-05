@@ -84,7 +84,10 @@ asset plus the "got distracted" desaturation-cue tuning — no duration/timing f
 `VisualTimer.tsx` dispatches to this the same way it does the SVG styles; note `pizza` (the
 default "Eating Pizza" style) goes through this static-image path while `pie` (same component,
 `showSliceLines`) still renders via `EatingPizza`, since no separate image asset exists for it.
-Source images are authored portrait 9:16 (not landscape) so `resizeMode="cover"` crops safely
+Rendered via `expo-image`'s `<Image contentFit="cover">` — not React Native's core `<Image>`,
+which produced a badly over-zoomed crop on real devices for these large source PNGs when sized
+via `StyleSheet.absoluteFill`, see the spec doc's Implementation Notes. Source images are
+authored portrait 9:16 (not landscape) so `contentFit="cover"` crops safely
 across phone/tablet aspect ratios — see the spec doc's cropping-safety guidance before adding a
 new theme image. Adding a new static-image theme means dropping an image under
 `assets/timer-themes/<theme>/`, adding a `StaticThemeConfig` entry, and wiring the `VisualStyle`
