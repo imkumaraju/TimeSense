@@ -14,6 +14,15 @@
 
 const EAS_PROJECT_ID = 'c1c68318-e26c-477f-8074-b4cba4e48901';
 
+// Google's official public test AdMob app IDs — safe to ship as the default since they only
+// ever serve Google's test creatives, never real ads. Swap in real app IDs (from your own
+// AdMob account, one per platform) via these env vars once TimeSense Plus's ad-supported free
+// tier is ready to go live with real inventory — see lib/ads.ts.
+const ADMOB_ANDROID_APP_ID =
+  process.env.ADMOB_ANDROID_APP_ID ?? 'ca-app-pub-3940256099942544~3347511713';
+const ADMOB_IOS_APP_ID =
+  process.env.ADMOB_IOS_APP_ID ?? 'ca-app-pub-3940256099942544~1458002511';
+
 /** @typedef {'development' | 'preview' | 'production'} AppEnv */
 
 /**
@@ -124,6 +133,13 @@ const config = {
     ],
     '@sentry/react-native',
     [
+      'react-native-google-mobile-ads',
+      {
+        androidAppId: ADMOB_ANDROID_APP_ID,
+        iosAppId: ADMOB_IOS_APP_ID,
+      },
+    ],
+    [
       'react-native-android-widget',
       {
         widgets: [
@@ -131,10 +147,13 @@ const config = {
             name: 'Routine',
             label: 'TimeSense Routine',
             description: 'Today’s routine status, at a glance.',
-            minWidth: '110dp',
-            minHeight: '110dp',
-            targetCellWidth: 2,
-            targetCellHeight: 2,
+            // Default placement is the smallest reasonable footprint (1x1 cell) — was 2x2,
+            // which took up roughly two rows of home-screen icons. Still resizable up to
+            // maxResize if a user wants it bigger.
+            minWidth: '60dp',
+            minHeight: '60dp',
+            targetCellWidth: 1,
+            targetCellHeight: 1,
             maxResizeWidth: '250dp',
             maxResizeHeight: '250dp',
             resizeMode: 'horizontal|vertical',

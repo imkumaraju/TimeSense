@@ -7,10 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VisualTimer } from '@/components/timer/VisualTimer';
 import { TsButton } from '@/components/ui/TsButton';
 import { colors, fonts } from '@/constants/theme';
+import { showInterstitialIfDue } from '@/lib/ads';
 import { isStaticImageStyle } from '@/lib/timerThemes';
 import { createTask } from '@/lib/tasksDb';
 import { pulseMilestoneFeedback } from '@/lib/timerFeedback';
 import { formatClock } from '@/lib/timerMath';
+import { useProfile } from '@/lib/useProfile';
 import { useActiveTimerStore } from '@/stores/activeTimerStore';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -33,9 +35,11 @@ export default function ActiveTimerScreen() {
   const getDerived = useActiveTimerStore((s) => s.getDerived);
   const start = useActiveTimerStore((s) => s.start);
   const user = useAuthStore((s) => s.user);
+  const { isPlus } = useProfile();
 
   const [, setNow] = useState(() => Date.now());
   const [distractSignal, setDistractSignal] = useState(0);
+  const [finishing, setFinishing] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const idleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,8 +143,14 @@ export default function ActiveTimerScreen() {
     return <View style={styles.container} />;
   }
 
-  const onFinish = () => {
-    router.replace('/timer/complete');
+  const onFinish = async () => {
+    if (finishing) return;
+    setFinishing(true);
+    try {
+      await showInterstitialIfDue(isPlus);
+    } finally {
+      router.replace('/timer/complete');
+    }
   };
 
   const onDistracted = () => {
@@ -162,18 +172,24 @@ export default function ActiveTimerScreen() {
 
   const immersive = isStaticImageStyle(meta.visualStyle);
 
+  // Immersive backgrounds are full-bleed illustrated images, mostly light/pale — the boxed
+  // layout's dark board background needs the opposite (light text on dark).
   const clock = meta.showDigital ? (
-    <Text style={styles.clock}>{formatClock(derived.remainingSeconds)}</Text>
-  ) : null;
-  const subLabel = (
-    <Text style={[styles.sub, !meta.showDigital && { marginTop: 14 }]}>
-      {derived.isComplete
-        ? "Time's up"
-        : `${meta.showDigital ? 'remaining' : 'Time left'}${
-            meta.name ? ` · ${meta.name}` : ''
-          }`}
+    <Text style={[styles.clock, immersive && styles.clockOnImage]}>
+      {formatClock(derived.remainingSeconds)}
     </Text>
-  );
+  ) : null;
+  const subLabelText = derived.isComplete ? "Time's up" : meta.name ?? null;
+  const subLabel = subLabelText ? (
+    <Text
+      style={[
+        styles.sub,
+        immersive && styles.subOnImage,
+        !meta.showDigital && { marginTop: 14 },
+      ]}>
+      {subLabelText}
+    </Text>
+  ) : null;
 
   if (immersive) {
     return (
@@ -244,7 +260,7 @@ export default function ActiveTimerScreen() {
             textStyle={styles.distracted}
             style={{ marginTop: 4, marginBottom: 12 }}
           />
-          <TsButton label="Finish" block onPress={onFinish} />
+          <TsButton label={finishing ? "Loading…" : "Finish"} block disabled={finishing} onPress={() => void onFinish()} />
         </Animated.View>
       </View>
     );
@@ -303,7 +319,7 @@ export default function ActiveTimerScreen() {
           style={{ marginTop: 4, marginBottom: 12 }}
         />
 
-        <TsButton label="Finish" block onPress={onFinish} />
+        <TsButton label={finishing ? "Loading…" : "Finish"} block disabled={finishing} onPress={() => void onFinish()} />
       </View>
     </View>
   );
@@ -336,12 +352,18 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: colors.cream,
   },
+  clockOnImage: {
+    color: colors.ink,
+  },
   sub: {
     marginTop: 4,
     marginBottom: 20,
     fontFamily: fonts.body,
     fontSize: 13,
     color: '#B99A7C',
+  },
+  subOnImage: {
+    color: colors.ink,
   },
   row: {
     flexDirection: 'row',
