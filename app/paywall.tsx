@@ -9,7 +9,8 @@ import { colors, fonts } from '@/constants/theme';
 import { getCurrentOffering, purchasePlus, restorePurchases } from '@/lib/purchases';
 import { useProfile } from '@/lib/useProfile';
 
-const FEATURES = ['No ads, ever', 'All timer styles, including Cat Loaf', 'Priority cloud sync'];
+// Ads-on-finish is the only thing Plus removes — see docs/concepts/feature-subscription-ads.md.
+const FEATURES = ['No ads when you finish a timer'];
 
 type Plan = 'monthly' | 'annual';
 
@@ -47,7 +48,7 @@ export default function PaywallScreen() {
     try {
       await purchasePlus(plan);
       await refresh();
-      Alert.alert('Welcome to Plus', 'All styles are unlocked — enjoy!');
+      Alert.alert('Welcome to Plus', "You won't see ads when you finish a timer anymore.");
       router.back();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not complete purchase.';
@@ -87,7 +88,7 @@ export default function PaywallScreen() {
       <View style={styles.hero}>
         <View style={styles.mascot} />
         <Text style={styles.title}>TimeSense Plus</Text>
-        <Text style={styles.subtitle}>Unlock everything</Text>
+        <Text style={styles.subtitle}>Go ad-free</Text>
       </View>
 
       <View style={styles.features}>
@@ -110,7 +111,7 @@ export default function PaywallScreen() {
             accessibilityState={{ selected: plan === 'monthly' }}
             onPress={() => setPlan('monthly')}
             style={[styles.planCard, plan === 'monthly' && styles.planCardActive]}>
-            <Text style={styles.planPrice}>{monthlyPkg?.product.priceString ?? '$6.99'}</Text>
+            <Text style={styles.planPrice}>{monthlyPkg?.product.priceString ?? '$10.00'}</Text>
             <Text style={styles.planPeriod}>per month</Text>
           </Pressable>
           <Pressable
@@ -118,8 +119,8 @@ export default function PaywallScreen() {
             accessibilityState={{ selected: plan === 'annual' }}
             onPress={() => setPlan('annual')}
             style={[styles.planCard, plan === 'annual' && styles.planCardActive]}>
-            <Text style={styles.badge}>SAVE 30%</Text>
-            <Text style={styles.planPrice}>{annualPkg?.product.priceString ?? '$59.99'}</Text>
+            <Text style={styles.badge}>2 MONTHS FREE</Text>
+            <Text style={styles.planPrice}>{annualPkg?.product.priceString ?? '$100.00'}</Text>
             <Text style={styles.planPeriod}>per year</Text>
           </Pressable>
         </View>

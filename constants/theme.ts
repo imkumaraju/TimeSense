@@ -28,7 +28,13 @@ export const fonts = {
   mono: 'Inter_500Medium',
 } as const;
 
-/** Wireframe labels → stored VisualStyle. `premium: true` styles require TimeSense Plus. */
+/**
+ * Wireframe labels → stored VisualStyle. `premium: true` styles require TimeSense Plus — none
+ * currently do: Plus's only differentiator is ads-on-finish (see docs/concepts/
+ * feature-subscription-ads.md), so all timer styles including Cat are unlocked for everyone
+ * as of 2026-09-05. The flag stays in the shape in case a future style is deliberately
+ * Plus-only again.
+ */
 export const STYLE_OPTIONS = [
   { label: 'Radial', value: 'pizza' as const, icon: 'chart-donut' as const, premium: false },
   { label: 'Pizza', value: 'pie' as const, icon: 'pizza' as const, premium: false },
@@ -40,7 +46,7 @@ export const STYLE_OPTIONS = [
     premium: false,
   },
   { label: 'Monk', value: 'monk' as const, icon: 'meditation' as const, premium: false },
-  { label: 'Cat', value: 'cat' as const, icon: 'cat' as const, premium: true },
+  { label: 'Cat', value: 'cat' as const, icon: 'cat' as const, premium: false },
 ];
 
 export const CATEGORY_OPTIONS = [

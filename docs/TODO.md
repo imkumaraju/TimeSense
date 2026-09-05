@@ -7,7 +7,8 @@ Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUN
 
 **Last updated:** 2026-09-05 (item #12: pizza/plant/monk/cat/moon migrated to static images,
 `expo-image` fix for an over-zoom bug; item #13: all streak/freeze UI removed, logic parked in
-`docs/BACKLOG.md` for redesign)
+`docs/BACKLOG.md` for redesign; item #14: subscription simplified to a single ads-only
+differentiator, AdMob interstitial added on Finish)
 
 ---
 
@@ -31,9 +32,10 @@ Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUN
 - **What to create:** two subscription products matching what the app code expects:
   - Monthly — should map to RevenueCat's `$rc_monthly` product/entitlement
   - Yearly — should map to RevenueCat's `$rc_annual` product/entitlement
-  - Current fallback prices shown in `app/paywall.tsx` (used only when RevenueCat can't
-    resolve real pricing): $6.99/month, $59.99/year — use these as a starting point, or
-    reprice as desired.
+  - Target prices (2026-09-05 decision, see `docs/concepts/feature-subscription-ads.md`):
+    **$10/month, $100/year** (~2 months free on annual) — `app/paywall.tsx`'s fallback display
+    strings already show these; the real Play Store products need to be created at these
+    price points to match.
 - **Then link in RevenueCat:** [app.revenuecat.com](https://app.revenuecat.com) → TimeSense
   project → Product catalog → Products → **TimeSense (Play Store)** section (currently empty —
   confirmed empty 2026-08-22, this is the actual root cause of the paywall bug, see item #3
@@ -90,7 +92,10 @@ RevenueCat dashboard screenshots on 2026-08-22:
 ### 6. Play Console — App content declarations
 - Target audience age range — pick based on who TimeSense is actually for (not specifically a
   kids' app; likely broad adult/general audience given the ADHD-productivity framing)
-- Ads declaration: **No ads** (accurate — no ad SDKs in the app)
+- Ads declaration: **Yes, ads** — no longer "No ads" as of item #14 (AdMob interstitial added
+  2026-09-05 for the standard tier's ads-on-finish). Update this before submission; also add
+  the Data Safety form's third-party ad SDK entry once real AdMob ad units are live (test-ID
+  builds may not need it — confirm Play's current policy line).
 - Data safety form: use the table already drafted in `docs/PLAY_STORE_LISTING.md` → "Data
   safety form" section — cross-checked against actual code (`lib/purchases.ts`,
   `lib/syncService.ts`, `app/_layout.tsx`'s Sentry usage). **Keep `docs/legal/privacy.html` in
@@ -249,6 +254,40 @@ RevenueCat dashboard screenshots on 2026-08-22:
         build as item #12's `expo-image` fix — bundle both into one build)
   - [ ] Re-capture the Play Store screenshot set (item #7) now that the Home streak badge is
         gone
+
+### 14. Single-tier subscription simplified to ads-only differentiator
+- **Spec:** `docs/concepts/feature-subscription-ads.md` — TimeSense Plus's only remaining
+  perk is no ads. Standard-tier users see a full-screen AdMob interstitial immediately after
+  tapping "Finish" on an active timer, before the task-complete/save screen; Plus users never
+  see it. All timer styles (including Cat Loaf) are now free for everyone — the `premium`
+  style-gating mechanic and "priority sync" paywall claim are both retired.
+- **Built and wired (2026-09-05):** `lib/ads.ts` (new — `showInterstitialIfDue(isPlus)`,
+  dynamically imports `react-native-google-mobile-ads` so it's safe in Expo Go, has a 4s load
+  timeout so a slow/broken ad network never blocks finishing a timer); `app/timer/active.tsx`'s
+  `onFinish` is now async and shows the interstitial via `useProfile()`'s `isPlus` before
+  `router.replace('/timer/complete')` (both Finish buttons show a disabled "Loading…" state
+  meanwhile); `constants/theme.ts`'s `cat` style `premium` flag flipped to `false`;
+  `app/paywall.tsx` and `app/(tabs)/settings.tsx`'s upsell copy trimmed to the single ads perk,
+  fallback prices updated to $10.00/mo, $100.00/yr, annual badge changed from a hardcoded
+  (and never-accurate) "SAVE 30%" to "2 MONTHS FREE"; `app.config.js` registers the
+  `react-native-google-mobile-ads` config plugin with Google's public test AdMob App IDs as
+  defaults; `.env.example` documents the override env vars.
+- **This adds a new native dependency (AdMob SDK) — needs a fresh EAS build**, same category
+  as `expo-video`/`expo-linear-gradient`/`expo-image` before it. Bundle with items #12/#13's
+  pending builds if not already shipped.
+- **Not yet done:**
+  - [ ] Build + test on-device: confirm the interstitial (test ad) actually shows for a
+        standard-tier account on Finish, and does *not* show for a Plus account
+  - [ ] Real AdMob account + app ID + ad unit ID — only the account owner can create these;
+        set via `ADMOB_ANDROID_APP_ID`/`ADMOB_IOS_APP_ID` (build-time) and
+        `EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID`/`_IOS_ID` (runtime) once they exist
+  - [ ] Real Google Play subscription products at $10/month, $100/year — blocked behind item
+        #1/#2 (BillDesk merchant verification)
+  - [ ] Play Console ads declaration + Data Safety form update (see item #6)
+  - [ ] Decide on a UMP/consent flow for ad-related GDPR/regional requirements before shipping
+        real (non-test) ads — not implemented in this pass
+  - [ ] Consider whether "ad on every single Finish tap" is too aggressive once tested on a
+        real device — open question in the spec doc
 
 ---
 

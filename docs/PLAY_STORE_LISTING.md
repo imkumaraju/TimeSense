@@ -37,7 +37,8 @@ FEATURES
 • Zero-friction by design: starting a timer is one tap from Home, task name
   and category are always optional
 
-TimeSense Plus unlocks every visual timer style and priority cloud sync.
+TimeSense Plus removes the ad shown after finishing a timer — $10/month or $100/year (2
+months free). Every visual timer style is free for everyone.
 
 Built for people who find a ticking digital clock stressful, not motivating —
 TimeSense is about self-knowledge, not pressure.
@@ -51,21 +52,25 @@ TimeSense is about self-knowledge, not pressure.
 
 ## Data safety form
 
-Matches what `lib/purchases.ts`, `lib/syncService.ts`, and `app/_layout.tsx` actually do:
+Matches what `lib/purchases.ts`, `lib/syncService.ts`, `lib/ads.ts`, and `app/_layout.tsx`
+actually do:
 
 | Data type | Collected? | Shared? | Purpose | Notes |
 |---|---|---|---|---|
 | Email address | Yes (only if user signs in) | No | Account management / authentication | Supabase Auth. Guest mode collects nothing. |
 | App activity (task/timer/routine data) | Yes (only if signed in) | No | App functionality (cross-device sync) | Stored in Supabase Postgres; not used for ads/analytics |
 | Crash logs | Yes | Yes — sent to Sentry (processor, not shared for advertising) | Analytics/crash reporting | Stack traces, device/OS/app version only — no task content |
-| Device or other identifiers | No | — | — | No advertising ID usage |
+| Device or other identifiers / Advertising ID | Yes (standard-tier users only) | Yes — Google AdMob | Advertising (interstitial after finishing a timer) | Plus subscribers never trigger this — `requestNonPersonalizedAdsOnly: true` in `lib/ads.ts`; **re-verify this row's exact wording against Play's current Data Safety categories before submission, and once a real (non-test) AdMob account is live** |
 | Purchase history | Yes | Yes — RevenueCat/Google Play Billing | App functionality (subscription entitlement) | Handled via RevenueCat, standard subscription flow |
 
 **Data deletion:** Yes — in-app via Settings → Delete account (mention this explicitly in the form's account-deletion section; Play now requires a working in-app deletion path, which this app already has).
 
 **Encryption in transit:** Yes (Supabase connections are HTTPS/TLS).
 
-**Ads:** No ad SDKs.
+**Ads:** Yes — Google AdMob interstitial shown to standard-tier (non-Plus) users after
+finishing a timer, before the save screen (see `docs/concepts/feature-subscription-ads.md`).
+Not "No ad SDKs" anymore as of 2026-09-05 — update this form's Ads declaration and add the
+third-party ad SDK data-sharing entry before submission (see `docs/TODO.md` item #14).
 
 ## Assets
 

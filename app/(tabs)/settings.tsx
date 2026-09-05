@@ -225,7 +225,7 @@ export default function SettingsScreen() {
           <TsCard style={[styles.rowCard, styles.rowCardUpsell]}>
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={styles.rowLabelOnDark}>Upgrade to Plus</Text>
-              <Text style={styles.rowSubOnDark}>No ads · all styles · priority sync</Text>
+              <Text style={styles.rowSubOnDark}>No ads when you finish a timer</Text>
             </View>
             <Text style={styles.rowLabelOnDark}>›</Text>
           </TsCard>
