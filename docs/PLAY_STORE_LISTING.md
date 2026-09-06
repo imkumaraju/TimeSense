@@ -37,8 +37,8 @@ FEATURES
 • Zero-friction by design: starting a timer is one tap from Home, task name
   and category are always optional
 
-TimeSense Plus removes the ad shown after finishing a timer — $10/month or $100/year (2
-months free). Every visual timer style is free for everyone.
+TimeSense Plus removes the ad shown after finishing a timer — $6.99/month or $59.99/year.
+Every visual timer style is free for everyone.
 
 Built for people who find a ticking digital clock stressful, not motivating —
 TimeSense is about self-knowledge, not pressure.
