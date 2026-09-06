@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024" role="img" aria-label="TimeSense monochrome">
+  <title>TimeSense app icon — Android themed-icon monochrome silhouette</title>
+  <g transform="translate(50 50) scale(0.82) translate(-50 -50)" fill="#000000">
+    <polygon points="25,26 32,5 47,19"></polygon>
+    <polygon points="75,26 68,5 53,19"></polygon>
+    <circle cx="50" cy="52" r="31" fill="none" stroke="#000000" stroke-width="9"></circle>
+    <circle cx="40" cy="48" r="4.6"></circle>
+    <circle cx="60" cy="48" r="4.6"></circle>
+    <path d="M47.2 56 h5.6 l-2.8 3.2 z"></path>
+  </g>
+</svg>
