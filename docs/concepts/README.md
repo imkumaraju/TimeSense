@@ -7,9 +7,9 @@ Prefer these over Downloads copies when implementing or reviewing.
 
 | File | What it is |
 |------|------------|
-| `adhd-timer-app-spec.md` | Full app build spec (daily showcase §3.0 + Recurring Routines §9) |
-| `first-launch-showcase.html` | Interactive Figma-style concept for the style belt |
-| `first-launch-showcase.md` | Concise implementable showcase spec (once per day) |
+| `adhd-timer-app-spec.md` | Full app build spec (daily showcase §3.0, removed 2026-09-06 + Recurring Routines §9) |
+| `first-launch-showcase.html` | Interactive Figma-style concept for the style belt — feature removed 2026-09-06, kept as historical reference |
+| `first-launch-showcase.md` | Concise implementable showcase spec (once per day) — feature removed 2026-09-06, kept as historical reference |
 | `streak-logic-feature-spec.md` | Forgiving streak / freeze algorithm |
 | `banyan-monk-timer-concept.html` | Monk timer skin concept |
 | `cat-loaf-timer-concept.html` | Cat Loaf timer skin concept |

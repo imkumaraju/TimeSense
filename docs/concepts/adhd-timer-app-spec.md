@@ -91,17 +91,19 @@ Submit for store submission.
 
 ## 3. Core Screens
 
-### 3.0 Daily Open — Style Showcase
-- Shown on the **first app open of each local calendar day** (AsyncStorage
-  `timesense.showcase.last_shown_date` = device-local `YYYY-MM-DD`). Same-day reopens skip it.
-- A horizontal, auto-playing conveyor of timer-style icons (Radial → Slices → Plant → Moon →
+### 3.0 Daily Open — Style Showcase (removed 2026-09-06)
+> This screen was removed entirely — `app/index.tsx` redirects straight to Home on every open
+> now, no daily gate. Kept below as historical reference; full interaction/motion spec still
+> at `docs/concepts/first-launch-showcase.html` + `docs/concepts/first-launch-showcase.md` in
+> case a first-open/onboarding flow is wanted again later.
+- ~~Shown on the **first app open of each local calendar day** (AsyncStorage
+  `timesense.showcase.last_shown_date` = device-local `YYYY-MM-DD`). Same-day reopens skip it.~~
+- ~~A horizontal, auto-playing conveyor of timer-style icons (Radial → Slices → Plant → Moon →
   Sky → Garden → Monk → **Cat Loaf**) scrolling once right→left (~4.5s), then auto-advancing
-  to **Home**. Skip is always available. Does not force Sign Up on every daily open.
-- **Closing icon:** Cat Loaf — the chosen app icon (Section 8) — so the last tile matches the
-  home-screen mark (cream loaf + crust-dark ear shading + basil eyes on `--crust`).
-- Purpose: remind that the app has multiple timer styles in a few seconds of motion.
-- Full interaction and motion spec: `docs/concepts/first-launch-showcase.html` +
-  `docs/concepts/first-launch-showcase.md`.
+  to **Home**. Skip is always available. Does not force Sign Up on every daily open.~~
+- ~~**Closing icon:** Cat Loaf — the chosen app icon (Section 8) — so the last tile matches the
+  home-screen mark (cream loaf + crust-dark ear shading + basil eyes on `--crust`).~~
+- ~~Purpose: remind that the app has multiple timer styles in a few seconds of motion.~~
 
 ### 3.1 Sign Up / Log In
 - Email + password, plus "Sign in with Apple" (required alongside any other social option

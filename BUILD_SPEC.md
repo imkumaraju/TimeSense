@@ -101,13 +101,20 @@ Submit for store submission.
 
 ## 3. Core Screens
 
-### 3.0 Daily Open — Style Showcase
+### 3.0 Daily Open — Style Showcase (removed 2026-09-06)
 
-- Shown on the **first open of each local calendar day** (`timesense.showcase.last_shown_date`).
-- Conveyor belt of style icons (Radial → Slices → Plant → Moon → Sky → Garden → Monk →
-  **Cat Loaf**), one pass (~4.5s), then Home. Skip always available.
-- Closing tile is the **app icon** (Cat Loaf: cream loaf, crust-dark ear shading, basil eyes
-  on crust). See `docs/concepts/first-launch-showcase.md`.
+> Removed entirely per product decision — `app/index.tsx` now redirects straight to Home on
+> every open, no daily gate. `lib/showcaseGate.ts`, `app/showcase.tsx`, and
+> `components/showcase/ShowcaseStyleIcon.tsx` were deleted; the `showcase` route was
+> unregistered from `app/_layout.tsx`. `docs/concepts/first-launch-showcase.md` is kept as
+> historical reference for the design if a first-open/onboarding flow is wanted again later.
+
+- ~~Shown on the **first open of each local calendar day**
+  (`timesense.showcase.last_shown_date`).~~
+- ~~Conveyor belt of style icons (Radial → Slices → Plant → Moon → Sky → Garden → Monk →
+  **Cat Loaf**), one pass (~4.5s), then Home. Skip always available.~~
+- ~~Closing tile is the **app icon** (Cat Loaf: cream loaf, crust-dark ear shading, basil eyes
+  on crust). See `docs/concepts/first-launch-showcase.md`.~~
 
 ### 3.1 Sign Up / Log In
 
@@ -500,7 +507,7 @@ it than the other v1.5 items.
 
 ## 8. App Icon
 
-**Chosen: Cat Loaf** (closes the daily showcase belt).
+**Chosen: Cat Loaf** (was the closing tile of the now-removed daily showcase belt, §3.0).
 
 - Cream loaf silhouette with triangle ears on solid crust-orange; ear inners use crust-dark;
   eyes basil — palette-only, no new hues.
