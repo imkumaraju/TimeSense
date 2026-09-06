@@ -17,7 +17,11 @@ env vars)
 ## 🔴 Blocked — waiting on external review
 
 ### 1. BillDesk / Google Play merchant account verification
-- **Status:** Application submitted 2026-08-22, Application ID `2608221684`. Awaiting BillDesk
+- **Status:** Application `2608221684` (submitted 2026-08-22) needed one more step completed
+  2026-09-06 — the "Website and APK Details" section required at least one of a website URL
+  or a mobile app APK URL. Since `com.timesense.sys` isn't published yet, submitted the
+  marketing site (`https://imkumaraju.github.io/TimeSense/`, deployed the same day) as the
+  website URL and left the mobile app fields blank. Fully submitted now — awaiting BillDesk
   review email (typically hours to a few days for India merchant accounts).
 - **Why it matters:** nothing that touches real money can proceed until this clears — no Play
   subscription products, no working RevenueCat pricing, no Play Store submission with billing.
