@@ -11,20 +11,30 @@ Build and deployment → Source), since this replaces whatever branch/folder ser
 `imkumaraju.github.io/TimeSense/` page. Not something this workflow can do on its own — it
 needs the repo Settings UI (or `gh api` with an authenticated token).
 
-## Screenshots — action needed
-Four screenshots are referenced but not yet present on disk (paste-in-chat images aren't
-something this workflow can write to a file directly — need the actual files saved here):
+## Screenshots
+3 of 4 are in (2026-09-06) — `monk-timer.jpg` (re-encoded to JPEG, the raw PNG screenshot was
+4MB; resized to 640px wide, quality 78 → ~120KB), `new-timer.png`, `done.png`. **`home.png` is
+still missing** — need a Home screen capture ("Hey there, Raju", New Timer button, today's
+routines, recent list) saved to `assets/images/home.png`. Until it's added, that one `<img>`
+tag in `index.html` will show a broken-image icon.
 
-| Path | Should show |
-|---|---|
-| `assets/images/monk-timer.png` | Monk timer running, 00:47 remaining, Pause / +5 min / Finish |
-| `assets/images/home.png` | Home screen: "Hey there, Raju", New Timer, today's routines, recent list |
-| `assets/images/new-timer.png` | New timer form: Wash Dishes, 25 min, repeat days, style/category pickers |
-| `assets/images/done.png` | Done screen: "Nice work!", actual duration, how-did-it-feel picker |
+| Path | Should show | Status |
+|---|---|---|
+| `assets/images/monk-timer.jpg` | Monk timer running, time remaining, Pause / +5 min / Finish | ✅ |
+| `assets/images/home.png` | Home screen: "Hey there, Raju", New Timer, today's routines, recent list | ❌ missing |
+| `assets/images/new-timer.png` | New timer form: Wash Dishes, 25 min, repeat days, style/category pickers | ✅ |
+| `assets/images/done.png` | Done screen: "Nice work!", actual duration, how-did-it-feel picker | ✅ |
 
-Until these are added, the `<img>` tags in `index.html` will show broken-image icons in
-those two spots. Export at roughly 2–3× the CSS frame size (`phone-lg` 316×692,
-`phone-sm`/`phone-md` ~244–268×534–586) for a sharp retina render.
+Export at roughly 2–3× the CSS frame size (`phone-lg` 316×692, `phone-sm`/`phone-md`
+~244–268×534–586) for a sharp retina render. For a photographic/illustrated screenshot (like
+the Monk timer's background art), prefer JPEG over PNG — the raw screenshot compresses far
+better than PNG's lossless format for this kind of content (4MB → ~120KB in this case, no
+visible quality loss at display size). `npx sharp-cli -i in.png -o outdir -f jpeg -q 78 resize
+640` works well for this without installing anything permanently.
+
+Also worth knowing: these three screenshots were captured 2026-09-06, matching the app as of
+that date — if the timer screen's visuals change again later, re-capture rather than assuming
+these stay accurate indefinitely.
 
 ## Structure
 - `index.html` — the page.
