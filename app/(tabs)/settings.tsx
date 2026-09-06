@@ -29,6 +29,7 @@ import { getLastSyncedAt, syncNow } from '@/lib/syncService';
 import { listRoutines } from '@/lib/routinesDb';
 import { wipeLocalData } from '@/lib/tasksDb';
 import { showManageSubscriptions } from '@/lib/purchases';
+import { PAYMENTS_ENABLED } from '@/lib/entitlements';
 import { useProfile } from '@/lib/useProfile';
 import { useAuthStore } from '@/stores/authStore';
 import type { VisualStyle } from '@/types/task';
@@ -220,7 +221,7 @@ export default function SettingsScreen() {
       </TsCard>
 
       <TsSectionLabel style={{ marginTop: 16 }}>Timer</TsSectionLabel>
-      {!isPlus ? (
+      {!isPlus && PAYMENTS_ENABLED ? (
         <Pressable onPress={() => router.push('/paywall')}>
           <TsCard style={[styles.rowCard, styles.rowCardUpsell]}>
             <View style={{ flex: 1, paddingRight: 12 }}>
@@ -230,7 +231,7 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabelOnDark}>›</Text>
           </TsCard>
         </Pressable>
-      ) : (
+      ) : isPlus ? (
         <TsCard style={styles.rowCard}>
           <Text style={styles.rowLabel}>Manage subscription</Text>
           <Pressable onPress={() => void onManageSubscription()} disabled={managingSubscription}>
@@ -241,7 +242,7 @@ export default function SettingsScreen() {
             )}
           </Pressable>
         </TsCard>
-      )}
+      ) : null}
       <TsCard style={[styles.rowCard, { marginTop: 8 }]}>
         <Text style={styles.rowLabel}>Default style</Text>
         <Pressable onPress={() => setPickingStyle((v) => !v)}>

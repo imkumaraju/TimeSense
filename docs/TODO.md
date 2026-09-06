@@ -10,7 +10,8 @@ Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUN
 `docs/BACKLOG.md` for redesign; item #14: subscription simplified to a single ads-only
 differentiator, AdMob interstitial added on Finish; item #15: daily style showcase screen
 removed entirely; item #14 updated: real AdMob account/app/ad unit created and wired via EAS
-env vars)
+env vars, Plus pricing reverted to $6.99/$59.99, paywall app-icon bug fixed; item #16: free-only
+launch path added — `PAYMENTS_ENABLED` flag, items #4-7 no longer blocked on BillDesk)
 
 ---
 
@@ -32,6 +33,10 @@ env vars)
 ---
 
 ## 🟡 Blocked-behind-#1 — do these once merchant verification clears
+
+> **Update 2026-09-06:** items #2 and #3 below are genuinely blocked on BillDesk (they require
+> real Play Billing products). Items #4–#7 are **not** — see item #16 — the app can launch as
+> a free-only, ad-supported app without waiting on merchant verification at all.
 
 ### 2. Create real Google Play subscription products
 - **Where:** Play Console → TimeSense app → Monetize → Products → Subscriptions.
@@ -79,10 +84,13 @@ RevenueCat dashboard screenshots on 2026-08-22:
 - [ ] Test cancellation flow via `showManageSubscriptions()` (Settings → Manage subscription)
 
 ### 4. First real `release` build + Play Console upload
-- Once #2/#3 pass: `npx eas-cli build --profile release --platform android`
+- **Can proceed now** with `PAYMENTS_ENABLED = false` (item #16) — no need to wait on #2/#3
+  for a free-only launch. Once #2/#3 eventually pass, flip the flag back on and ship an update.
+- `npx eas-cli build --profile release --platform android`
 - Upload resulting `.aab` to Play Console **Internal testing** track (see `DEPLOYMENT.md` Phase 5)
-- Install via the internal testing link on a real device, sanity-check sign-in + sync + paywall
-  one more time on the actual Play-distributed build (not sideloaded)
+- Install via the internal testing link on a real device, sanity-check sign-in + sync + the
+  ads-on-finish flow one more time on the actual Play-distributed build (not sideloaded) —
+  paywall/purchase testing is deferred until #2/#3 clear and the flag is re-enabled
 - Promote Internal → Production when confident (staged rollout percentage recommended for the
   first production release)
 
@@ -333,6 +341,30 @@ RevenueCat dashboard screenshots on 2026-08-22:
   again later. `docs/concepts/first-launch-showcase.md`/`.html` kept as-is with a removal note
   at the top.
 - **Not yet done:** none — this was a clean full removal, no follow-up work identified.
+
+### 16. Free-only launch path — payments disabled pending BillDesk
+- **Decision (2026-09-06):** Google Play doesn't require merchant/BillDesk verification to
+  publish a **free** app — only to sell subscriptions/IAP. Since AdMob (ads-on-finish) is
+  completely separate from Play Billing and needs no merchant account, the app can launch now
+  as free-only (ads for everyone, no working purchase flow) instead of waiting on item #1 to
+  clear. **This unblocks items #4–#7 below** — only items #2/#3 (real subscription products +
+  RevenueCat validation) still need BillDesk.
+- **Built and wired:** `lib/entitlements.ts` — new `PAYMENTS_ENABLED = false` flag, with a
+  comment explaining what flipping it back to `true` requires (real linked RevenueCat
+  products). `app/(tabs)/settings.tsx`'s "Upgrade to Plus" upsell card is now hidden entirely
+  while the flag is off (the "Manage subscription" row still shows for anyone already on
+  Plus, e.g. via a RevenueCat sandbox/test purchase — unaffected by this flag). The `/paywall`
+  route itself, `lib/purchases.ts`, and `lib/entitlements.ts`'s `isPlus()` are all untouched —
+  this is purely a "don't offer the entry point" toggle, not a teardown of the purchase code.
+- **To re-enable payments later:** flip `PAYMENTS_ENABLED` to `true` in `lib/entitlements.ts`
+  once items #2/#3 are done (real Play products created and linked in RevenueCat) — the
+  upsell card reappears automatically, no other code changes needed.
+- **Not yet done:**
+  - [ ] Actually proceed with the Play Store submission steps this unblocks (items #4–#7) —
+        this item only prepared the code; submission itself hasn't been started
+  - [ ] Decide whether `docs/PLAY_STORE_LISTING.md`'s copy needs a pass to make sure nothing
+        implies Plus/paid features are available at launch, given the upsell entry point is
+        hidden
 
 ---
 
