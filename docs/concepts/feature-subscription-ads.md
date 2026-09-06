@@ -1,8 +1,9 @@
 # Feature: Single-Tier Subscription, Ads-on-Finish
 
 ## Summary
-TimeSense has exactly one paid tier — **TimeSense Plus** — sold as two packages (**$10/month**
-or **$100/year**, ~2 months free on the annual plan). The **only** difference between Plus and
+TimeSense has exactly one paid tier — **TimeSense Plus** — sold as two packages
+(**$6.99/month** or **$59.99/year**, the original pricing — briefly changed to $10/$100 on
+2026-09-05 and reverted back the next day). The **only** difference between Plus and
 the free (standard) tier is ads: **standard-tier users see a full-screen interstitial ad
 immediately after tapping "Finish" on an active timer, before the task-complete/save screen
 appears; Plus users never see this ad.** This supersedes the prior paywall's three-perk pitch
@@ -78,12 +79,16 @@ User taps "Finish" (app/timer/active.tsx)
   a newer Kotlin toolchain may make a newer `react-native-google-mobile-ads` safe again.
 
 ## Pricing
-- **Monthly:** $10.00 — **Annual:** $100.00 (≈2 months free vs. paying monthly all year:
-  $10 × 12 = $120, so $100 saves $20, the value of 2 months).
+- **Monthly:** $6.99 — **Annual:** $59.99 (≈28% off paying monthly all year: $6.99 × 12 =
+  $83.88, so $59.99 saves ~$23.89).
 - These are the paywall's **fallback display strings** (`app/paywall.tsx`) shown only when
   RevenueCat can't resolve a real `PurchasesPackage` (e.g. no configured offering, no network).
   Real prices always come from `monthlyPkg?.product.priceString` / `annualPkg?.product
   .priceString` when available.
+- **History:** these are the original prices. On 2026-09-05 they were briefly changed to
+  $10/month, $100/year as part of the ads-only-tier redesign, then reverted back to $6.99/
+  $59.99 the next day (2026-09-06) per a follow-up product decision — the ads-only
+  differentiator model itself was kept, only the price points changed back.
 - The actual Google Play subscription products at these price points still need to be created
   in Play Console and linked in RevenueCat — blocked behind BillDesk merchant verification,
   see `docs/TODO.md` item #1/#2. This doc's pricing is the target to configure once that
@@ -98,10 +103,12 @@ User taps "Finish" (app/timer/active.tsx)
 - **`constants/theme.ts`** — `cat` style's `premium` flag flipped to `false`; comment updated
   to explain the flag is now unused but kept for shape stability.
 - **`app/paywall.tsx`** — `FEATURES` trimmed to the single ads perk; hero subtitle changed to
-  "Go ad-free"; fallback prices updated to $10.00/$100.00; annual badge changed from a
-  hardcoded "SAVE 30%" (never actually computed from real prices) to "2 MONTHS FREE" (accurate
-  for $10×12 vs. $100); post-purchase alert copy updated to describe the ads perk instead of
-  "all styles unlocked."
+  "Go ad-free"; hero banner's placeholder `View` swapped for a real `Image` of the app icon
+  (`assets/images/icon.png`) — it had never actually been wired to any image; fallback prices
+  are $6.99/$59.99 (briefly $10.00/$100.00 for one day, reverted — see Pricing section above);
+  annual badge is "SAVE 28%" (was a hardcoded, never-computed "SAVE 30%" originally, briefly
+  "2 MONTHS FREE" during the $10/$100 window); post-purchase alert copy updated to describe
+  the ads perk instead of "all styles unlocked."
 - **`app/(tabs)/settings.tsx`** — upsell card subtext updated to match the paywall's single
   perk.
 - **`app.config.js`** — added the `react-native-google-mobile-ads` config plugin with test App

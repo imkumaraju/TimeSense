@@ -34,10 +34,10 @@ env vars)
 - **What to create:** two subscription products matching what the app code expects:
   - Monthly — should map to RevenueCat's `$rc_monthly` product/entitlement
   - Yearly — should map to RevenueCat's `$rc_annual` product/entitlement
-  - Target prices (2026-09-05 decision, see `docs/concepts/feature-subscription-ads.md`):
-    **$10/month, $100/year** (~2 months free on annual) — `app/paywall.tsx`'s fallback display
-    strings already show these; the real Play Store products need to be created at these
-    price points to match.
+  - Target prices (reverted 2026-09-06 back to the original figures, see
+    `docs/concepts/feature-subscription-ads.md`): **$6.99/month, $59.99/year** —
+    `app/paywall.tsx`'s fallback display strings already show these; the real Play Store
+    products need to be created at these price points to match.
 - **Then link in RevenueCat:** [app.revenuecat.com](https://app.revenuecat.com) → TimeSense
   project → Product catalog → Products → **TimeSense (Play Store)** section (currently empty —
   confirmed empty 2026-08-22, this is the actual root cause of the paywall bug, see item #3
@@ -277,6 +277,11 @@ RevenueCat dashboard screenshots on 2026-08-22:
 - **This adds a new native dependency (AdMob SDK) — needs a fresh EAS build**, same category
   as `expo-video`/`expo-linear-gradient`/`expo-image` before it. Bundle with items #12/#13's
   pending builds if not already shipped.
+- **Pricing reverted (2026-09-06):** back to the original **$6.99/month, $59.99/year** —
+  the "SAVE 30%" badge (never actually computed) is now "SAVE 28%" (accurate for these
+  figures: $6.99×12=$83.88 vs $59.99 saves ~28.5%). Also fixed the same day: the paywall's
+  hero banner was showing an empty placeholder box instead of the real app icon —
+  `app/paywall.tsx`'s `mascot` `View` is now an `Image` pointing at `assets/images/icon.png`.
 - **Real AdMob account created (2026-09-06):** Android app + interstitial ad unit created in
   the AdMob dashboard (owner: raju003). App ID `ca-app-pub-4731207754740357~2159579225` set as
   `ADMOB_ANDROID_APP_ID` and ad unit ID `ca-app-pub-4731207754740357/5517099251` set as
@@ -303,8 +308,8 @@ RevenueCat dashboard screenshots on 2026-08-22:
         interstitial-on-Finish placement should be checked against this before going live,
         (e) create the iOS app/ad unit in AdMob once an iOS build is planned (not currently
         built at all per item #8's platform scope)
-  - [ ] Real Google Play subscription products at $10/month, $100/year — blocked behind item
-        #1/#2 (BillDesk merchant verification)
+  - [ ] Real Google Play subscription products at $6.99/month, $59.99/year — blocked behind
+        item #1/#2 (BillDesk merchant verification)
   - [ ] Play Console ads declaration + Data Safety form update (see item #6)
   - [ ] Decide on a UMP/consent flow for ad-related GDPR/regional requirements before shipping
         real (non-test) ads to real users — not implemented in this pass

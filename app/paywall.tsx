@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
@@ -86,7 +86,7 @@ export default function PaywallScreen() {
         { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 20 },
       ]}>
       <View style={styles.hero}>
-        <View style={styles.mascot} />
+        <Image source={require('@/assets/images/icon.png')} style={styles.mascot} />
         <Text style={styles.title}>TimeSense Plus</Text>
         <Text style={styles.subtitle}>Go ad-free</Text>
       </View>
@@ -111,7 +111,7 @@ export default function PaywallScreen() {
             accessibilityState={{ selected: plan === 'monthly' }}
             onPress={() => setPlan('monthly')}
             style={[styles.planCard, plan === 'monthly' && styles.planCardActive]}>
-            <Text style={styles.planPrice}>{monthlyPkg?.product.priceString ?? '$10.00'}</Text>
+            <Text style={styles.planPrice}>{monthlyPkg?.product.priceString ?? '$6.99'}</Text>
             <Text style={styles.planPeriod}>per month</Text>
           </Pressable>
           <Pressable
@@ -119,8 +119,8 @@ export default function PaywallScreen() {
             accessibilityState={{ selected: plan === 'annual' }}
             onPress={() => setPlan('annual')}
             style={[styles.planCard, plan === 'annual' && styles.planCardActive]}>
-            <Text style={styles.badge}>2 MONTHS FREE</Text>
-            <Text style={styles.planPrice}>{annualPkg?.product.priceString ?? '$100.00'}</Text>
+            <Text style={styles.badge}>SAVE 28%</Text>
+            <Text style={styles.planPrice}>{annualPkg?.product.priceString ?? '$59.99'}</Text>
             <Text style={styles.planPeriod}>per year</Text>
           </Pressable>
         </View>
@@ -168,7 +168,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: colors.cream,
     marginBottom: 10,
   },
   title: {
