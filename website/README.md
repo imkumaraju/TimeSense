@@ -12,18 +12,14 @@ Build and deployment → Source), since this replaces whatever branch/folder ser
 needs the repo Settings UI (or `gh api` with an authenticated token).
 
 ## Screenshots
-3 of 4 are in (2026-09-06) — `monk-timer.jpg` (re-encoded to JPEG, the raw PNG screenshot was
-4MB; resized to 640px wide, quality 78 → ~120KB), `new-timer.png`, `done.png`. **`home.png` is
-still missing** — need a Home screen capture ("Hey there, Raju", New Timer button, today's
-routines, recent list) saved to `assets/images/home.png`. Until it's added, that one `<img>`
-tag in `index.html` will show a broken-image icon.
+All 4 are in as of 2026-09-06.
 
 | Path | Should show | Status |
 |---|---|---|
-| `assets/images/monk-timer.jpg` | Monk timer running, time remaining, Pause / +5 min / Finish | ✅ |
-| `assets/images/home.png` | Home screen: "Hey there, Raju", New Timer, today's routines, recent list | ❌ missing |
-| `assets/images/new-timer.png` | New timer form: Wash Dishes, 25 min, repeat days, style/category pickers | ✅ |
-| `assets/images/done.png` | Done screen: "Nice work!", actual duration, how-did-it-feel picker | ✅ |
+| `assets/images/monk-timer.jpg` | Monk timer running, time remaining, Pause / +5 min / Finish | ✅ (captured 2026-09-06) |
+| `assets/images/home.png` | Home screen: "Hey there, Raju", New Timer, today's routines, recent list | ✅ (captured 2026-08-29 — predates the streak-badge removal, so it still shows a streak badge the current app no longer has; re-capture from a current build when convenient) |
+| `assets/images/new-timer.png` | New timer form: Wash Dishes, 25 min, repeat days, style/category pickers | ✅ (captured 2026-09-06) |
+| `assets/images/done.png` | Done screen: "Nice work!", actual duration, how-did-it-feel picker | ✅ (captured 2026-09-06) |
 
 Export at roughly 2–3× the CSS frame size (`phone-lg` 316×692, `phone-sm`/`phone-md`
 ~244–268×534–586) for a sharp retina render. For a photographic/illustrated screenshot (like
