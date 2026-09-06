@@ -5,10 +5,11 @@ Claude) can pick this up cold — each item has enough context to act without re
 Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUNBOOK.md`,
 `BACKLOG.md`) rather than duplicating them; update *this* file's checkboxes as things move.
 
-**Last updated:** 2026-09-05 (item #12: pizza/plant/monk/cat/moon migrated to static images,
+**Last updated:** 2026-09-06 (item #12: pizza/plant/monk/cat/moon migrated to static images,
 `expo-image` fix for an over-zoom bug; item #13: all streak/freeze UI removed, logic parked in
 `docs/BACKLOG.md` for redesign; item #14: subscription simplified to a single ads-only
-differentiator, AdMob interstitial added on Finish)
+differentiator, AdMob interstitial added on Finish; item #15: daily style showcase screen
+removed entirely)
 
 ---
 
@@ -288,6 +289,20 @@ RevenueCat dashboard screenshots on 2026-08-22:
         real (non-test) ads — not implemented in this pass
   - [ ] Consider whether "ad on every single Finish tap" is too aggressive once tested on a
         real device — open question in the spec doc
+
+### 15. Daily style showcase removed entirely
+- **What happened (2026-09-06):** the once-per-day "conveyor belt of timer styles" screen
+  shown on first app open each day was removed completely, per product decision — not
+  replaced with anything. `app/index.tsx` now redirects straight to `/(tabs)` on every open.
+- **Deleted:** `lib/showcaseGate.ts`, `lib/__tests__/showcaseGate.test.ts`, `app/showcase.tsx`,
+  `components/showcase/ShowcaseStyleIcon.tsx`; the `showcase` route registration removed from
+  `app/_layout.tsx`.
+- **Docs updated, not deleted:** `BUILD_SPEC.md` §3.0, `docs/concepts/adhd-timer-app-spec.md`
+  §3.0, `docs/concepts/README.md` — all struck through / annotated as removed rather than
+  deleted, so the design is available as reference if a first-open/onboarding flow is wanted
+  again later. `docs/concepts/first-launch-showcase.md`/`.html` kept as-is with a removal note
+  at the top.
+- **Not yet done:** none — this was a clean full removal, no follow-up work identified.
 
 ---
 

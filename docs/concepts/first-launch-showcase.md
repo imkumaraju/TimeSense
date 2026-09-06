@@ -1,5 +1,10 @@
 # Daily Style Showcase — Feature Spec
 
+> **Removed 2026-09-06.** This screen shipped and then was pulled entirely — `app/index.tsx`
+> now redirects straight to Home on every open, no daily gate. `lib/showcaseGate.ts`,
+> `app/showcase.tsx`, and `components/showcase/ShowcaseStyleIcon.tsx` were deleted. Kept here
+> as historical reference in case a first-open/onboarding flow is wanted again later.
+
 Source concept: `docs/concepts/first-launch-showcase.html`  
 Related: `adhd-timer-app-spec.md` §3.0 + §8 (App Icon), `BUILD_SPEC.md` §3.0.
 
