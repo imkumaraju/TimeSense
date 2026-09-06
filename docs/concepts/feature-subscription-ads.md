@@ -111,18 +111,36 @@ User taps "Finish" (app/timer/active.tsx)
 - **`docs/PLAY_STORE_LISTING.md`** — Data Safety form's "Ads: No ad SDKs" line needs updating
   once this ships for real (see Play Console follow-up below).
 
+## Real AdMob Account (2026-09-06)
+- Created — Android app + one interstitial ad unit, owner `raju003`. App ID and ad unit ID are
+  set as EAS env vars on the `preview` environment (`ADMOB_ANDROID_APP_ID`,
+  `EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID`), not committed to the repo — see `docs/TODO.md`
+  item #14 for the exact values and current status.
+- The AdMob app was added as **not listed on a store**, since `com.timesense.sys` isn't
+  published on Play yet — needs re-linking to the real listing once it ships.
+- AdMob's own UI warns new ad units can take **up to ~1 hour** before they start actually
+  serving ads — a build right after creating the ad unit may briefly show no fill (handled
+  gracefully: `lib/ads.ts` just proceeds to the complete screen on any load failure/timeout).
+- New AdMob apps also go through an initial review period (roughly the first week) before
+  reaching "Ready" status — expect this to show as pending for a bit, that's normal.
+- No iOS app/ad unit created yet — not needed until an iOS build exists at all (none does
+  currently, see item #8's platform scope in `docs/TODO.md`).
+
 ## Play Console / Store Listing Follow-up (not yet done)
 - **Ads declaration** (Play Console → App content → Ads) must change from "No ads" to "Yes" —
   `docs/TODO.md` item #6 previously said "accurate — no ad SDKs in the app," which stops being
-  true once this ships with a real AdMob account.
+  true now that a real AdMob account exists and is wired in.
 - **Data Safety form** needs an "Advertising ID" / third-party ad SDK data-sharing entry for
-  AdMob once real ad units are live (test-ID-only builds arguably don't need this yet, since
+  AdMob once real ad units are live (test-ID-only *builds* arguably don't need this yet, since
   they never serve real ads to real users, but confirm Play's exact policy line before
-  submission).
+  submission — the ad unit itself is now real, even though the app isn't published).
 - A **UMP (User Messaging Platform) / consent flow** for GDPR/ATT-adjacent ad consent may be
-  required depending on target regions once real ads are live — not implemented in this pass
-  (test ads don't need it); flag as a pre-launch follow-up alongside the real AdMob account
-  setup.
+  required depending on target regions once real ads are live — not implemented in this pass;
+  flag as a pre-launch follow-up.
+- **Before production release specifically:** complete the AdMob payments profile, re-link the
+  AdMob app to the real Play Store listing, confirm AdMob's new-app review has cleared, and
+  review AdMob's placement policies against the interstitial-on-Finish UX — full checklist in
+  `docs/TODO.md` item #14.
 
 ## Open Questions
 - Whether to cap ad frequency (e.g. at most once per N minutes) rather than literally every
@@ -133,7 +151,7 @@ User taps "Finish" (app/timer/active.tsx)
   bounded by a 4s timeout.
 
 ## Out of Scope / Follow-up
-- Real AdMob account creation, app ID / ad unit ID provisioning — only the account owner can
-  do this; code is ready to take real IDs via env vars the moment they exist.
+- ~~Real AdMob account creation, app ID / ad unit ID provisioning~~ — done 2026-09-06, see
+  above.
 - Real Google Play subscription products at $10/$100 — blocked behind BillDesk verification,
   tracked separately in `docs/TODO.md` items #1-#3.
