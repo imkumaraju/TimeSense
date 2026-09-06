@@ -9,7 +9,8 @@ Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUN
 `expo-image` fix for an over-zoom bug; item #13: all streak/freeze UI removed, logic parked in
 `docs/BACKLOG.md` for redesign; item #14: subscription simplified to a single ads-only
 differentiator, AdMob interstitial added on Finish; item #15: daily style showcase screen
-removed entirely)
+removed entirely; item #14 updated: real AdMob account/app/ad unit created and wired via EAS
+env vars)
 
 ---
 
@@ -276,17 +277,37 @@ RevenueCat dashboard screenshots on 2026-08-22:
 - **This adds a new native dependency (AdMob SDK) — needs a fresh EAS build**, same category
   as `expo-video`/`expo-linear-gradient`/`expo-image` before it. Bundle with items #12/#13's
   pending builds if not already shipped.
+- **Real AdMob account created (2026-09-06):** Android app + interstitial ad unit created in
+  the AdMob dashboard (owner: raju003). App ID `ca-app-pub-4731207754740357~2159579225` set as
+  `ADMOB_ANDROID_APP_ID` and ad unit ID `ca-app-pub-4731207754740357/5517099251` set as
+  `EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID`, both as EAS env vars on the `preview`
+  environment (`eas env:list --environment preview` to verify) — **not** committed to the repo
+  (matches how the Supabase/RevenueCat keys are handled). App was added as **not yet listed on
+  a store** (`com.timesense.sys` isn't published on Play yet) — needs re-linking to the real
+  Play Store listing once that ships, see below. No iOS app/ad unit created yet
+  (`ADMOB_IOS_APP_ID`/`EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS_ID` still unset, falls back to
+  Google's iOS test IDs).
 - **Not yet done:**
-  - [ ] Build + test on-device: confirm the interstitial (test ad) actually shows for a
-        standard-tier account on Finish, and does *not* show for a Plus account
-  - [ ] Real AdMob account + app ID + ad unit ID — only the account owner can create these;
-        set via `ADMOB_ANDROID_APP_ID`/`ADMOB_IOS_APP_ID` (build-time) and
-        `EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID`/`_IOS_ID` (runtime) once they exist
+  - [ ] Build + test on-device: confirm the **real** interstitial (AdMob may take up to ~1
+        hour after ad unit creation before it starts serving, per AdMob's own notice) actually
+        shows for a standard-tier account on Finish, and does *not* show for a Plus account —
+        needs a fresh `sys` build first since `ADMOB_ANDROID_APP_ID` changed (new native config)
+  - [ ] **Before Play Store production release:** revisit AdMob account settings —
+        (a) complete the AdMob payments profile (only needed before real payouts, not before
+        ads can serve, but must be done before launch), (b) re-link the AdMob app to the real
+        `com.timesense.sys`/production Play Store listing once published (it was created as
+        "not listed on a store" since the app isn't live yet), (c) confirm the app has cleared
+        AdMob's initial ~7-day new-app review/"Ready" status, (d) review AdMob policies
+        (https://support.google.com/admob/answer/6128543) for compliance — e.g. no
+        accidental-click-inducing placement, ad clearly distinguishable from app content — the
+        interstitial-on-Finish placement should be checked against this before going live,
+        (e) create the iOS app/ad unit in AdMob once an iOS build is planned (not currently
+        built at all per item #8's platform scope)
   - [ ] Real Google Play subscription products at $10/month, $100/year — blocked behind item
         #1/#2 (BillDesk merchant verification)
   - [ ] Play Console ads declaration + Data Safety form update (see item #6)
   - [ ] Decide on a UMP/consent flow for ad-related GDPR/regional requirements before shipping
-        real (non-test) ads — not implemented in this pass
+        real (non-test) ads to real users — not implemented in this pass
   - [ ] Consider whether "ad on every single Finish tap" is too aggressive once tested on a
         real device — open question in the spec doc
 
