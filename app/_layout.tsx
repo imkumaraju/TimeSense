@@ -21,6 +21,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { colors } from '@/constants/theme';
+import { gatherAdsConsent } from '@/lib/ads';
 import { initPurchases, syncPurchasesIdentity } from '@/lib/purchases';
 import { ensureReentryNudge } from '@/lib/reengagementNudge';
 import { cancelExpiredRoutineNotifications } from '@/lib/routineNotifications';
@@ -91,6 +92,11 @@ function RootLayout() {
 
   useEffect(() => {
     initPurchases();
+  }, []);
+
+  useEffect(() => {
+    // UMP consent form on cold start so it never lands on the Finish-timer path.
+    void gatherAdsConsent();
   }, []);
 
   useEffect(() => {

@@ -26,6 +26,7 @@ import {
 import { localDateString } from '@/lib/routineLogic';
 import { rescheduleRoutineNotifications } from '@/lib/routineNotifications';
 import { createRoutine, getRoutineById } from '@/lib/routinesDb';
+import { PAYMENTS_ENABLED } from '@/lib/entitlements';
 import { getDefaultVisualStyle } from '@/lib/settings';
 import { createTask, listRecentTasks } from '@/lib/tasksDb';
 import { useProfile } from '@/lib/useProfile';
@@ -295,7 +296,7 @@ export default function NewTimerScreen() {
                 locked={locked}
                 onPress={() => {
                   if (locked) {
-                    router.push('/paywall');
+                    if (PAYMENTS_ENABLED) router.push('/paywall');
                     return;
                   }
                   setVisualStyle(opt.value);

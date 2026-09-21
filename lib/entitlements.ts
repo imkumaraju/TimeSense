@@ -3,9 +3,11 @@ import type { Profile } from '@/types/task';
 /**
  * Flip to `true` once real Play Store subscription products exist and are linked in
  * RevenueCat (blocked behind BillDesk merchant verification, see docs/TODO.md item #1/#2).
- * While `false`, the app ships as free-only (ads-on-finish for everyone) and hides the
- * "Upgrade to Plus" entry point in Settings, rather than offering a purchase flow that can't
- * actually process a payment — see docs/TODO.md item #16.
+ * While `false`, the app ships as free-only (ads-on-finish for everyone). Settings shows
+ * TimeSense Plus as "Coming soon" and the paywall is info-only — no purchase CTA — rather
+ * than offering a flow that can't process a payment. BillDesk needs a live listing before
+ * it will verify the merchant account, so Plus stays announced-but-unpurchasable until
+ * that clears — see docs/TODO.md item #16.
  */
 export const PAYMENTS_ENABLED = false;
 

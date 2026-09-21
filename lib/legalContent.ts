@@ -2,7 +2,7 @@
 // The public GitHub Pages copies under docs/legal/*.html are hand-mirrored from this —
 // update both when the wording changes.
 
-export const LEGAL_LAST_UPDATED = 'August 15, 2026';
+export const LEGAL_LAST_UPDATED = 'September 21, 2026';
 export const LEGAL_CONTACT_EMAIL = 'imkumaraju@gmail.com';
 
 export type LegalSection = {
@@ -17,7 +17,9 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
   },
   {
     heading: 'Guest mode (offline)',
-    body: `By default TimeSense runs in guest mode: your tasks, timers, routines, and settings are stored only on your device (local SQLite storage). Nothing is sent to us or any third party unless you choose to sign in.`,
+    body: `By default TimeSense runs in guest mode: your tasks, timers, routines, and settings are stored only on your device (local SQLite storage). Signing in is optional and is what sends that task data to our servers for sync.
+
+Guest mode is not a total network-off mode. Preview/production builds may still send crash reports (see Crash reporting), and the free tier may still show a Google ad after you finish a timer (see Advertising).`,
   },
   {
     heading: 'What we collect if you sign in',
@@ -26,15 +28,33 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
 • The task, timer, and routine data you create in the app (name/category are optional, predicted vs. actual durations, timestamps)
 • A device-local notification schedule for routine reminders — this stays on your device and is never synced or uploaded.
 
-We do not collect analytics, advertising identifiers, or usage tracking data. The app has no ads and no third-party analytics or crash-reporting SDKs.`,
+We do not sell your task data or use it to target ads. Advertising identifiers used by the ad SDK are described under Advertising.`,
   },
   {
     heading: 'How your data is stored',
-    body: `Signed-in data is stored using Supabase (a hosted PostgreSQL database provider) over an encrypted connection. Data is used solely to sync your own tasks and timers across your own devices — we do not sell, share, or use your data for advertising.`,
+    body: `Signed-in data is stored using Supabase (a hosted PostgreSQL database provider) over an encrypted connection. Task, timer, and routine data is used solely to sync your own records across your own devices — we do not sell it or use it to target ads. Device identifiers used by Google's ad SDK are described under Advertising.`,
   },
   {
     heading: 'Insights',
     body: `The Insights screen (predicted-vs-actual duration trends) is computed entirely on your device from your local data. Insight statistics are never stored on our servers or shared.`,
+  },
+  {
+    heading: 'Crash reporting',
+    body: `TimeSense uses Sentry to automatically report app crashes and errors, so we can find and fix bugs. This is limited to technical crash data (stack traces, device/OS type, app version) — it does not include your task, timer, or routine content. Crash reporting is not active in local development builds.`,
+  },
+  {
+    heading: 'Advertising',
+    body: `The free (standard) tier shows a full-screen Google AdMob interstitial immediately after you tap Finish on a timer, before the save screen. TimeSense Plus (coming soon) will remove this ad for subscribers — it is not available to purchase yet, so every user currently sees the ad. Ads are the only paid-tier difference.
+
+When an ad is requested, Google's Mobile Ads SDK — not TimeSense's servers — may collect and use:
+• Device or other identifiers, including the advertising ID
+• Approximate location derived from IP address
+• Device information (such as make, model, and OS)
+• Ad interaction data (whether an ad loaded, was shown, or was clicked)
+
+TimeSense always requests non-personalized ads from AdMob. We do not use your tasks, timers, or routines to target ads, and we do not sell that data.
+
+In the EEA, UK, and other regulated regions, Google's User Messaging Platform (UMP) consent form is shown on first launch before ads are requested. You can change those choices later from Settings → Ad privacy when that option is required in your region. If you decline ads, Finish still saves your timer — the ad is skipped.`,
   },
   {
     heading: 'Data deletion',

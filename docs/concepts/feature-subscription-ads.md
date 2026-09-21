@@ -36,7 +36,8 @@ User taps "Finish" (app/timer/active.tsx)
   → onFinish() — button shows "Loading…", disabled
     → showInterstitialIfDue(isPlus)   (lib/ads.ts)
         Plus user  → resolves immediately, no ad
-        Standard   → loads + shows a full-screen interstitial, resolves on close
+        Standard   → UMP `canRequestAds`? if no, skip ad (Finish still saves)
+                     else loads + shows a full-screen interstitial, resolves on close
                      (or resolves anyway after a 4s load timeout / any SDK error —
                      an ad network hiccup must never block finishing a timer)
   → router.replace('/timer/complete')  (unchanged — the save/review screen)
@@ -95,11 +96,18 @@ User taps "Finish" (app/timer/active.tsx)
   clears, not something code alone can make real.
 
 ## What Changed, File by File
-- **`lib/ads.ts`** (new) — `showInterstitialIfDue(isPlus)`, the whole ad-loading/showing/
-  timeout logic described above.
+- **`lib/ads.ts`** — `showInterstitialIfDue(isPlus)`, UMP `gatherAdsConsent` /
+  `getAdsConsentSnapshot` / `showAdsPrivacyOptions`, and the `canRequestAds` gate before
+  loading an interstitial.
+- **`app/_layout.tsx`** — cold-start `gatherAdsConsent()` so the form is never on Finish.
 - **`app/timer/active.tsx`** — `onFinish` is now async: shows/awaits the interstitial (via
   `useProfile()`'s `isPlus`) before navigating to `/timer/complete`; both "Finish" buttons
   (immersive + boxed layouts) show a disabled "Loading…" state while this is in flight.
+- **`app/(tabs)/settings.tsx`** — "Ad privacy" row when UMP requires a privacy-options entry
+  point; upsell card subtext matches the paywall's single perk. While `PAYMENTS_ENABLED` is
+  false the upsell is replaced by a non-tappable **TimeSense Plus · Coming soon** row (same
+  perk copy, no purchase CTA) so the listing can ship for BillDesk verification without a
+  broken buy flow. `isPlus` users still see Manage subscription.
 - **`constants/theme.ts`** — `cat` style's `premium` flag flipped to `false`; comment updated
   to explain the flag is now unused but kept for shape stability.
 - **`app/paywall.tsx`** — `FEATURES` trimmed to the single ads perk; hero subtitle changed to
@@ -108,15 +116,17 @@ User taps "Finish" (app/timer/active.tsx)
   are $6.99/$59.99 (briefly $10.00/$100.00 for one day, reverted — see Pricing section above);
   annual badge is "SAVE 28%" (was a hardcoded, never-computed "SAVE 30%" originally, briefly
   "2 MONTHS FREE" during the $10/$100 window); post-purchase alert copy updated to describe
-  the ads perk instead of "all styles unlocked."
-- **`app/(tabs)/settings.tsx`** — upsell card subtext updated to match the paywall's single
-  perk.
-- **`app.config.js`** — added the `react-native-google-mobile-ads` config plugin with test App
-  IDs as defaults.
-- **`.env.example`** — documented the four new optional env vars (2 build-time App IDs, 2
-  runtime ad unit IDs).
-- **`docs/PLAY_STORE_LISTING.md`** — Data Safety form's "Ads: No ad SDKs" line needs updating
-  once this ships for real (see Play Console follow-up below).
+  the ads perk instead of "all styles unlocked." While `PAYMENTS_ENABLED` is false the screen
+  is info-only (Coming soon + Got it, no prices/Continue/Restore, no RevenueCat fetch).
+- **`app.config.js`** — `react-native-google-mobile-ads` config plugin with test App IDs as
+  defaults, plus `delayAppMeasurementInit: true` so measurement waits for consent.
+- **`.env.example`** — AdMob App ID / ad unit env vars, plus optional
+  `EXPO_PUBLIC_ADMOB_DEBUG_EEA` / `EXPO_PUBLIC_ADMOB_TEST_DEVICE_ID` for forcing the UMP form
+  on a test device.
+- **`docs/PLAY_STORE_LISTING.md`** — paste-ready Ads declaration + Data Safety table,
+  including AdMob rows (2026-09-13).
+- **`lib/legalContent.ts` / `docs/legal/privacy.html`** — ads, UMP, crash reporting; guest
+  mode no longer claims zero third-party traffic.
 
 ## Real AdMob Account (2026-09-06)
 - Created — Android app + one interstitial ad unit, owner `raju003`. App ID and ad unit ID are
@@ -133,21 +143,48 @@ User taps "Finish" (app/timer/active.tsx)
 - No iOS app/ad unit created yet — not needed until an iOS build exists at all (none does
   currently, see item #8's platform scope in `docs/TODO.md`).
 
-## Play Console / Store Listing Follow-up (not yet done)
-- **Ads declaration** (Play Console → App content → Ads) must change from "No ads" to "Yes" —
-  `docs/TODO.md` item #6 previously said "accurate — no ad SDKs in the app," which stops being
-  true now that a real AdMob account exists and is wired in.
-- **Data Safety form** needs an "Advertising ID" / third-party ad SDK data-sharing entry for
-  AdMob once real ad units are live (test-ID-only *builds* arguably don't need this yet, since
-  they never serve real ads to real users, but confirm Play's exact policy line before
-  submission — the ad unit itself is now real, even though the app isn't published).
-- A **UMP (User Messaging Platform) / consent flow** for GDPR/ATT-adjacent ad consent may be
-  required depending on target regions once real ads are live — not implemented in this pass;
-  flag as a pre-launch follow-up.
+## Play Console / Store Listing Follow-up
+- **Ads declaration** — answers to paste are in `docs/PLAY_STORE_LISTING.md` → "Play Console —
+  Ads declaration": **Yes, ads / Google AdMob / not a kids' app**. Still needs typing into
+  Play Console (`docs/TODO.md` item #6); a leftover "No ads" answer from the pre-AdMob draft
+  will fail review.
+- **Data safety form** — paste-ready table in the same doc (updated 2026-09-13). Includes
+  AdMob Advertising ID, approximate location (IP), ad interactions, Sentry, and the purchase
+  SDK (declare even while `PAYMENTS_ENABLED` is false). Re-check Play's category *labels* on
+  the day you submit — they rename; the facts don't.
+- **Privacy policy** — in-app (`lib/legalContent.ts`) and `docs/legal/privacy.html` disclose
+  ads, UMP, and crash reporting as of 2026-09-13. **Redeploy GitHub Pages** so the live URL
+  Play reviews is not the old "the app has no ads" text.
 - **Before production release specifically:** complete the AdMob payments profile, re-link the
   AdMob app to the real Play Store listing, confirm AdMob's new-app review has cleared, and
   review AdMob's placement policies against the interstitial-on-Finish UX — full checklist in
-  `docs/TODO.md` item #14.
+  `docs/TODO.md` item #14. Create the GDPR UMP *message* in AdMob Privacy & messaging (item
+  #17) — the in-app form will not have copy to show until that exists.
+
+## UMP / GDPR consent (2026-09-13)
+Decision: use Google's User Messaging Platform via `AdsConsent` on the already-installed
+`react-native-google-mobile-ads` package. No extra CMP. Existing code was checked first
+(no prior consent helper; invertase already ships UMP).
+
+- **When:** `gatherAdsConsent()` on cold start (`app/_layout.tsx`) — not on Finish. A consent
+  form on Finish would interrupt the save path and look like an accidental-click trap.
+- **Gate:** `showInterstitialIfDue` only loads an ad when `interstitialIsDue` is true (not
+  Plus, not web, and `canRequestAds`). If the user declined, Finish still navigates to
+  complete — the ad is skipped. The 4s load timeout applies only to the ad request, never
+  to the consent form.
+- **Privacy options:** Settings → **Ad privacy** is shown only when UMP reports
+  `privacyOptionsRequirementStatus === REQUIRED` (typically EEA/UK) and calls
+  `AdsConsent.showPrivacyOptionsForm()`.
+- **NPA:** ads are still requested with `requestNonPersonalizedAdsOnly: true` as a
+  conservative extra layer on top of UMP, not a substitute for it. EEA still needs the form
+  even for non-personalized inventory.
+- **Init order:** `app.config.js` sets `delayAppMeasurementInit: true`. `MobileAds.initialize()`
+  runs only after consent has allowed ads, on the first Finish that is due.
+- **Dashboard dependency:** AdMob → Privacy & messaging → create a **GDPR** message for the
+  Android app. Without it, `gatherConsent()` is a no-op form and EEA users may stay on
+  `canRequestAds: false`. Optional US-state message is out of scope for this launch.
+- **Debug:** `EXPO_PUBLIC_ADMOB_DEBUG_EEA=1` plus `EXPO_PUBLIC_ADMOB_TEST_DEVICE_ID` (hashed
+  ID from logcat) forces the EEA form on a test device. Leave unset in production.
 
 ## Open Questions
 - Whether to cap ad frequency (e.g. at most once per N minutes) rather than literally every
@@ -160,5 +197,7 @@ User taps "Finish" (app/timer/active.tsx)
 ## Out of Scope / Follow-up
 - ~~Real AdMob account creation, app ID / ad unit ID provisioning~~ — done 2026-09-06, see
   above.
-- Real Google Play subscription products at $10/$100 — blocked behind BillDesk verification,
+- ~~UMP/consent code~~ — done 2026-09-13; remaining is the AdMob Privacy & messaging GDPR
+  *message* plus Play Console paste (item #17).
+- Real Google Play subscription products at $6.99/$59.99 — blocked behind BillDesk verification,
   tracked separately in `docs/TODO.md` items #1-#3.

@@ -37,7 +37,7 @@ FEATURES
 • Zero-friction by design: starting a timer is one tap from Home, task name
   and category are always optional
 
-TimeSense Plus removes the ad shown after finishing a timer — $6.99/month or $59.99/year.
+TimeSense Plus (coming soon) will remove the ad shown after finishing a timer.
 Every visual timer style is free for everyone.
 
 Built for people who find a ticking digital clock stressful, not motivating —
@@ -48,29 +48,49 @@ TimeSense is about self-knowledge, not pressure.
 
 **Contact email:** imkumaraju@gmail.com
 
-**Privacy policy URL:** `https://imkumaraju.github.io/TimeSense/legal/privacy.html` (already live, updated to disclose Sentry crash reporting)
+**Privacy policy URL:** `https://imkumaraju.github.io/TimeSense/legal/privacy.html` (already live). **Redeploy `docs/legal/privacy.html` after the 2026-09-13 ads/UMP wording change** — the public page must match the in-app policy (`lib/legalContent.ts`) before Play review.
+
+## Play Console — Ads declaration
+
+Play Console → Policy → App content → **Ads**. Paste answers:
+
+| Question | Answer |
+|---|---|
+| Does your app contain ads? | **Yes** |
+| Are the ads shown in the app from a third party? | **Yes — Google AdMob** (`react-native-google-mobile-ads`) |
+| Ads shown to children / Designed for Families? | **No.** TimeSense is not a kids' app (see target-audience declaration). |
+
+Placement for the reviewer (not a form field, but what they will see): one full-screen interstitial after the user **explicitly taps Finish** on an active timer, before the save screen. Controls are visible at that moment; it is not an accidental-click overlay on the running timer. TimeSense Plus (coming soon, not purchasable at launch) will skip this ad; until then every user sees it (`lib/ads.ts` `showInterstitialIfDue(isPlus)`).
 
 ## Data safety form
 
-Matches what `lib/purchases.ts`, `lib/syncService.ts`, `lib/ads.ts`, and `app/_layout.tsx`
-actually do:
+Play Console → Policy → App content → **Data safety**. Matches `lib/purchases.ts`, `lib/syncService.ts`, `lib/ads.ts`, and `app/_layout.tsx`. AdMob rows follow [Google's Mobile Ads SDK Data safety disclosures](https://support.google.com/admob/answer/11085002) — collected/shared by Google's SDK when an ad is requested, not stored on TimeSense servers.
 
-| Data type | Collected? | Shared? | Purpose | Notes |
-|---|---|---|---|---|
-| Email address | Yes (only if user signs in) | No | Account management / authentication | Supabase Auth. Guest mode collects nothing. |
-| App activity (task/timer/routine data) | Yes (only if signed in) | No | App functionality (cross-device sync) | Stored in Supabase Postgres; not used for ads/analytics |
-| Crash logs | Yes | Yes — sent to Sentry (processor, not shared for advertising) | Analytics/crash reporting | Stack traces, device/OS/app version only — no task content |
-| Device or other identifiers / Advertising ID | Yes (standard-tier users only) | Yes — Google AdMob | Advertising (interstitial after finishing a timer) | Plus subscribers never trigger this — `requestNonPersonalizedAdsOnly: true` in `lib/ads.ts`; **re-verify this row's exact wording against Play's current Data Safety categories before submission, and once a real (non-test) AdMob account is live** |
-| Purchase history | Yes | Yes — RevenueCat/Google Play Billing | App functionality (subscription entitlement) | Handled via RevenueCat, standard subscription flow |
+**Overview questions**
 
-**Data deletion:** Yes — in-app via Settings → Delete account (mention this explicitly in the form's account-deletion section; Play now requires a working in-app deletion path, which this app already has).
+| Question | Answer |
+|---|---|
+| Does your app collect or share user data? | **Yes** |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS/TLS to Supabase, Sentry, Google Ads) |
+| Do you provide a way for users to request that their data is deleted? | **Yes** — Settings → Delete account (signed in) or Clear local data (guest) |
 
-**Encryption in transit:** Yes (Supabase connections are HTTPS/TLS).
+**Data types** — check each row in Play's current category names (they occasionally rename; if a label differs, pick the closest match and keep the notes):
 
-**Ads:** Yes — Google AdMob interstitial shown to standard-tier (non-Plus) users after
-finishing a timer, before the save screen (see `docs/concepts/feature-subscription-ads.md`).
-Not "No ad SDKs" anymore as of 2026-09-05 — update this form's Ads declaration and add the
-third-party ad SDK data-sharing entry before submission (see `docs/TODO.md` item #14).
+| Play category | Collected? | Shared? | Optional? | Purpose(s) | Notes |
+|---|---|---|---|---|---|
+| Personal info → Email address | Yes (signed-in only) | No | Yes — users can stay in guest mode | App functionality | Supabase Auth. Guests do not send an email. |
+| App activity → App interactions (task/timer/routine content) | Yes (signed-in only) | No | Yes — guest data stays on device | App functionality | Synced to Supabase Postgres. **Not used for advertising.** |
+| App activity → App interactions (ad impressions/clicks) | Yes (when an ad is shown) | Yes — Google AdMob | Yes — UMP decline, or Plus (when available), skips the ad | Advertising or marketing | Collected by the AdMob SDK, not by TimeSense. Plus is coming soon and not purchasable at launch, so every user currently hits this path. |
+| App info and performance → Crash logs | Yes (preview/production builds) | Yes — Sentry (processor) | No, for those builds | Analytics / App functionality | Stack traces, device/OS/app version. No task content. Dev builds do not send. |
+| Location → Approximate location | Yes (when an ad is requested) | Yes — Google AdMob | Yes — same as ads | Advertising or marketing | Derived from IP by the AdMob SDK. TimeSense does not request GPS for ads. |
+| Device or other IDs | Yes (when an ad is requested) | Yes — Google AdMob | Yes — UMP decline / Plus (when available) skips ads | Advertising or marketing | Includes Advertising ID. Ads are requested as **non-personalized** (`requestNonPersonalizedAdsOnly: true`). Plus never triggers this once it ships. |
+| Financial info → Purchase history | Yes (if a Play purchase exists) | Yes — RevenueCat / Google Play Billing | Yes — purchases are optional; currently `PAYMENTS_ENABLED = false` so this path is unused at launch | App functionality | Declare it anyway: the purchase SDK is still in the app. |
+
+**Third-party sharing:** Google AdMob (ads), Sentry (crash reports), RevenueCat/Google Play (purchases, when enabled), Supabase (signed-in sync — that's *your* backend, typically "collected by the app" not a separate advertiser).
+
+**Data deletion:** Yes — in-app via Settings → Delete account. Play requires a working in-app deletion path, which this app already has.
+
+If Play's form still has a leftover "No ads / no ad SDKs" answer from the pre-AdMob draft, overwrite it. Re-check the exact category labels in Console on the day you submit — they change more often than the facts above.
 
 ## Assets
 
@@ -87,4 +107,6 @@ third-party ad SDK data-sharing entry before submission (see `docs/TODO.md` item
 ## Still needed before submission
 
 - [ ] Content rating questionnaire answers (straightforward — no violence/gambling/etc. content, standard "Everyone" category expected)
-- [ ] App content declarations (target audience age range — pick based on who TimeSense is actually for)
+- [ ] App content declarations (target audience age range — pick based on who TimeSense is actually for; **Ads = Yes**, see "Play Console — Ads declaration" above)
+- [ ] Fill Data safety from the table above (includes AdMob Advertising ID, approximate location, ad interactions)
+- [ ] Redeploy `docs/legal/privacy.html` to GitHub Pages so the live privacy URL matches the ads/UMP wording
