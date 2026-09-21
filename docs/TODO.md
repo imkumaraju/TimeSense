@@ -5,7 +5,9 @@ Claude) can pick this up cold — each item has enough context to act without re
 Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUNBOOK.md`,
 `BACKLOG.md`) rather than duplicating them; update *this* file's checkboxes as things move.
 
-**Last updated:** 2026-09-21 (item #16: TimeSense Plus shown as Coming soon while payments
+**Last updated:** 2026-09-21 (item #17: live GitHub Pages privacy policy now matches the
+ads/UMP wording — deployed from `main` via PR #31.)
+Earlier: 2026-09-21 (item #16: TimeSense Plus shown as Coming soon while payments
 stay off — BillDesk needs a live listing to verify; store listing + privacy copy no longer
 imply Plus is purchasable.)
 Earlier: 2026-09-13 (item #17: UMP/GDPR consent implemented in `lib/ads.ts`; Play ads
@@ -121,8 +123,8 @@ RevenueCat dashboard screenshots on 2026-08-22:
   `lib/ads.ts`, `lib/purchases.ts`, `lib/syncService.ts`, `app/_layout.tsx`. **Re-check Play's
   category labels on the day you submit** — they rename; the facts don't.
 - **Privacy policy URL** must match the live page. In-app copy (`lib/legalContent.ts`) and
-  `docs/legal/privacy.html` were updated 2026-09-13 for ads/UMP — **redeploy GitHub Pages**
-  before review or Play will see the old "the app has no ads" text.
+  `docs/legal/privacy.html` disclose ads/UMP/Sentry; GitHub Pages was redeployed 2026-09-21
+  (`https://imkumaraju.github.io/TimeSense/legal/privacy.html`).
 
 ### 7. Play Console — Store listing page
 - Content fully drafted in `docs/PLAY_STORE_LISTING.md` (short description, full description —
@@ -410,7 +412,8 @@ RevenueCat dashboard screenshots on 2026-08-22:
         states; skip if you are launching India/global without CCPA messaging for now.
   - [ ] Type the Ads + Data Safety answers from `docs/PLAY_STORE_LISTING.md` into Play
         Console (item #6) — this item only prepared the copy
-  - [ ] Redeploy `docs/legal/privacy.html` to GitHub Pages so the live privacy URL matches
+  - [x] Redeploy `docs/legal/privacy.html` to GitHub Pages so the live privacy URL matches
+        (PR #31 → `main`, 2026-09-21)
   - [ ] On-device: confirm the UMP form appears for an EEA-debug device
         (`EXPO_PUBLIC_ADMOB_DEBUG_EEA=1` + `EXPO_PUBLIC_ADMOB_TEST_DEVICE_ID` from logcat;
         see `.env.example`), Ad privacy shows in Settings afterwards, declining still lets

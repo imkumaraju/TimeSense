@@ -153,8 +153,8 @@ User taps "Finish" (app/timer/active.tsx)
   SDK (declare even while `PAYMENTS_ENABLED` is false). Re-check Play's category *labels* on
   the day you submit — they rename; the facts don't.
 - **Privacy policy** — in-app (`lib/legalContent.ts`) and `docs/legal/privacy.html` disclose
-  ads, UMP, and crash reporting as of 2026-09-13. **Redeploy GitHub Pages** so the live URL
-  Play reviews is not the old "the app has no ads" text.
+  ads, UMP, and crash reporting. GitHub Pages was redeployed 2026-09-21
+  (`https://imkumaraju.github.io/TimeSense/legal/privacy.html`).
 - **Before production release specifically:** complete the AdMob payments profile, re-link the
   AdMob app to the real Play Store listing, confirm AdMob's new-app review has cleared, and
   review AdMob's placement policies against the interstitial-on-Finish UX — full checklist in
