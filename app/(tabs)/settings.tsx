@@ -29,6 +29,10 @@ import { getLastSyncedAt, syncNow } from '@/lib/syncService';
 import { listRoutines } from '@/lib/routinesDb';
 import { wipeLocalData } from '@/lib/tasksDb';
 import { showManageSubscriptions } from '@/lib/purchases';
+import {
+  getAdsConsentSnapshot,
+  showAdsPrivacyOptions,
+} from '@/lib/ads';
 import { PAYMENTS_ENABLED } from '@/lib/entitlements';
 import { useProfile } from '@/lib/useProfile';
 import { useAuthStore } from '@/stores/authStore';
@@ -52,6 +56,7 @@ export default function SettingsScreen() {
   const [routineCount, setRoutineCount] = useState(0);
   const [activeRoutineCount, setActiveRoutineCount] = useState(0);
   const [managingSubscription, setManagingSubscription] = useState(false);
+  const [adPrivacyRequired, setAdPrivacyRequired] = useState(false);
 
   const reload = useCallback(async () => {
     setDefaultStyle(await getDefaultVisualStyle());
@@ -64,6 +69,9 @@ export default function SettingsScreen() {
       setSyncHint(`Last synced ${new Date(last).toLocaleString()}`);
     }
     void refreshProfile();
+    void getAdsConsentSnapshot().then((snap) => {
+      setAdPrivacyRequired(snap.isPrivacyOptionsRequired);
+    });
   }, [user?.id, refreshProfile]);
 
   useFocusEffect(
@@ -221,17 +229,7 @@ export default function SettingsScreen() {
       </TsCard>
 
       <TsSectionLabel style={{ marginTop: 16 }}>Timer</TsSectionLabel>
-      {!isPlus && PAYMENTS_ENABLED ? (
-        <Pressable onPress={() => router.push('/paywall')}>
-          <TsCard style={[styles.rowCard, styles.rowCardUpsell]}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.rowLabelOnDark}>Upgrade to Plus</Text>
-              <Text style={styles.rowSubOnDark}>No ads when you finish a timer</Text>
-            </View>
-            <Text style={styles.rowLabelOnDark}>›</Text>
-          </TsCard>
-        </Pressable>
-      ) : isPlus ? (
+      {isPlus ? (
         <TsCard style={styles.rowCard}>
           <Text style={styles.rowLabel}>Manage subscription</Text>
           <Pressable onPress={() => void onManageSubscription()} disabled={managingSubscription}>
@@ -242,7 +240,28 @@ export default function SettingsScreen() {
             )}
           </Pressable>
         </TsCard>
-      ) : null}
+      ) : PAYMENTS_ENABLED ? (
+        <Pressable onPress={() => router.push('/paywall')}>
+          <TsCard style={[styles.rowCard, styles.rowCardUpsell]}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.rowLabelOnDark}>Upgrade to Plus</Text>
+              <Text style={styles.rowSubOnDark}>No ads when you finish a timer</Text>
+            </View>
+            <Text style={styles.rowLabelOnDark}>›</Text>
+          </TsCard>
+        </Pressable>
+      ) : (
+        <TsCard
+          style={styles.rowCard}
+          accessibilityRole="text"
+          accessibilityLabel="TimeSense Plus, coming soon. No ads when you finish a timer.">
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={styles.rowLabel}>TimeSense Plus</Text>
+            <Text style={styles.rowSub}>No ads when you finish a timer</Text>
+          </View>
+          <Text style={styles.comingSoon}>Coming soon</Text>
+        </TsCard>
+      )}
       <TsCard style={[styles.rowCard, { marginTop: 8 }]}>
         <Text style={styles.rowLabel}>Default style</Text>
         <Pressable onPress={() => setPickingStyle((v) => !v)}>
@@ -270,7 +289,7 @@ export default function SettingsScreen() {
                 locked={locked}
                 onPress={() => {
                   if (locked) {
-                    router.push('/paywall');
+                    if (PAYMENTS_ENABLED) router.push('/paywall');
                     return;
                   }
                   void onPickStyle(opt.value);
@@ -340,7 +359,20 @@ export default function SettingsScreen() {
       </TsCard>
 
       <TsSectionLabel style={{ marginTop: 16 }}>Legal</TsSectionLabel>
-      <TsCard style={styles.rowCard}>
+      {adPrivacyRequired ? (
+        <TsCard style={styles.rowCard}>
+          <Text style={styles.rowLabel}>Ad privacy</Text>
+          <Pressable
+            onPress={() => {
+              void showAdsPrivacyOptions().then((snap) => {
+                setAdPrivacyRequired(snap.isPrivacyOptionsRequired);
+              });
+            }}>
+            <Text style={styles.rowAction}>Manage ›</Text>
+          </Pressable>
+        </TsCard>
+      ) : null}
+      <TsCard style={[styles.rowCard, adPrivacyRequired ? { marginTop: 8 } : null]}>
         <Text style={styles.rowLabel}>Privacy Policy</Text>
         <Pressable onPress={() => router.push('/legal/privacy')}>
           <Text style={styles.rowAction}>View ›</Text>
@@ -391,6 +423,17 @@ const styles = StyleSheet.create({
     color: colors.cream,
     opacity: 0.85,
     marginTop: 2,
+  },
+  rowSub: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  comingSoon: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.muted,
   },
   rowLabel: {
     fontFamily: fonts.body,

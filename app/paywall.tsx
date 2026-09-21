@@ -6,6 +6,7 @@ import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases
 
 import { TsButton } from '@/components/ui/TsButton';
 import { colors, fonts } from '@/constants/theme';
+import { PAYMENTS_ENABLED } from '@/lib/entitlements';
 import { getCurrentOffering, purchasePlus, restorePurchases } from '@/lib/purchases';
 import { useProfile } from '@/lib/useProfile';
 
@@ -25,6 +26,10 @@ export default function PaywallScreen() {
   const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
+    if (!PAYMENTS_ENABLED) {
+      setLoadingOffering(false);
+      return;
+    }
     let cancelled = false;
     void getCurrentOffering().then((current) => {
       if (!cancelled) {
@@ -43,7 +48,7 @@ export default function PaywallScreen() {
   const plansUnavailable = !loadingOffering && !selectedPkg;
 
   const onContinue = async () => {
-    if (purchasing) return;
+    if (!PAYMENTS_ENABLED || purchasing) return;
     setPurchasing(true);
     try {
       await purchasePlus(plan);
@@ -62,7 +67,7 @@ export default function PaywallScreen() {
   };
 
   const onRestore = async () => {
-    if (restoring) return;
+    if (!PAYMENTS_ENABLED || restoring) return;
     setRestoring(true);
     try {
       await restorePurchases();
@@ -88,7 +93,9 @@ export default function PaywallScreen() {
       <View style={styles.hero}>
         <Image source={require('@/assets/images/icon.png')} style={styles.mascot} />
         <Text style={styles.title}>TimeSense Plus</Text>
-        <Text style={styles.subtitle}>Go ad-free</Text>
+        <Text style={styles.subtitle}>
+          {PAYMENTS_ENABLED ? 'Go ad-free' : 'Coming soon'}
+        </Text>
       </View>
 
       <View style={styles.features}>
@@ -102,51 +109,64 @@ export default function PaywallScreen() {
         ))}
       </View>
 
-      {loadingOffering ? (
-        <ActivityIndicator color={colors.sauce} style={{ marginVertical: 20 }} />
+      {PAYMENTS_ENABLED ? (
+        <>
+          {loadingOffering ? (
+            <ActivityIndicator color={colors.sauce} style={{ marginVertical: 20 }} />
+          ) : (
+            <View style={styles.planRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: plan === 'monthly' }}
+                onPress={() => setPlan('monthly')}
+                style={[styles.planCard, plan === 'monthly' && styles.planCardActive]}>
+                <Text style={styles.planPrice}>{monthlyPkg?.product.priceString ?? '$6.99'}</Text>
+                <Text style={styles.planPeriod}>per month</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: plan === 'annual' }}
+                onPress={() => setPlan('annual')}
+                style={[styles.planCard, plan === 'annual' && styles.planCardActive]}>
+                <Text style={styles.badge}>SAVE 28%</Text>
+                <Text style={styles.planPrice}>{annualPkg?.product.priceString ?? '$59.99'}</Text>
+                <Text style={styles.planPeriod}>per year</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {plansUnavailable && (
+            <Text style={styles.unavailableText}>
+              Plans aren't available right now. Check your connection and try again.
+            </Text>
+          )}
+
+          <View style={{ flex: 1 }} />
+
+          <TsButton
+            label={purchasing ? 'Purchasing…' : 'Continue'}
+            block
+            disabled={purchasing || plansUnavailable}
+            onPress={() => void onContinue()}
+          />
+          <TsButton
+            label={restoring ? 'Restoring…' : 'Restore purchase'}
+            variant="ghost"
+            disabled={restoring}
+            onPress={() => void onRestore()}
+            style={{ alignSelf: 'center', marginTop: 4 }}
+          />
+        </>
       ) : (
-        <View style={styles.planRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: plan === 'monthly' }}
-            onPress={() => setPlan('monthly')}
-            style={[styles.planCard, plan === 'monthly' && styles.planCardActive]}>
-            <Text style={styles.planPrice}>{monthlyPkg?.product.priceString ?? '$6.99'}</Text>
-            <Text style={styles.planPeriod}>per month</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: plan === 'annual' }}
-            onPress={() => setPlan('annual')}
-            style={[styles.planCard, plan === 'annual' && styles.planCardActive]}>
-            <Text style={styles.badge}>SAVE 28%</Text>
-            <Text style={styles.planPrice}>{annualPkg?.product.priceString ?? '$59.99'}</Text>
-            <Text style={styles.planPeriod}>per year</Text>
-          </Pressable>
-        </View>
+        <>
+          <Text style={styles.unavailableText}>
+            Plus isn't available to buy yet. You'll still see a short ad after Finish
+            until it ships.
+          </Text>
+          <View style={{ flex: 1 }} />
+          <TsButton label="Got it" block onPress={() => router.back()} />
+        </>
       )}
-
-      {plansUnavailable && (
-        <Text style={styles.unavailableText}>
-          Plans aren't available right now. Check your connection and try again.
-        </Text>
-      )}
-
-      <View style={{ flex: 1 }} />
-
-      <TsButton
-        label={purchasing ? 'Purchasing…' : 'Continue'}
-        block
-        disabled={purchasing || plansUnavailable}
-        onPress={() => void onContinue()}
-      />
-      <TsButton
-        label={restoring ? 'Restoring…' : 'Restore purchase'}
-        variant="ghost"
-        disabled={restoring}
-        onPress={() => void onRestore()}
-        style={{ alignSelf: 'center', marginTop: 4 }}
-      />
     </View>
   );
 }

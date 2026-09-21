@@ -137,6 +137,9 @@ const config = {
       {
         androidAppId: ADMOB_ANDROID_APP_ID,
         iosAppId: ADMOB_IOS_APP_ID,
+        // Don't start Ads measurement until MobileAds.initialize() after UMP
+        // (lib/ads.ts gatherAdsConsent → initialize). Required for GDPR.
+        delayAppMeasurementInit: true,
       },
     ],
     [
