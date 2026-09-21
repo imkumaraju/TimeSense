@@ -308,9 +308,8 @@ Google Play only for this release. iOS/App Store/TestFlight explicitly out of sc
   - Package name: `com.timesense.sys` (matches the `preview` EAS profile — do not create it under `com.timesense`)
   - App name: `TimeSense`
 - [ ] **Privacy policy URL** — required before any release; public page at
-      `https://imkumaraju.github.io/TimeSense/legal/privacy.html`. Redeploy
-      `docs/legal/privacy.html` after the 2026-09-13 ads/UMP update so Play does not see the
-      old "no ads" wording.
+      `https://imkumaraju.github.io/TimeSense/legal/privacy.html` (ads/UMP/Sentry wording
+      redeployed 2026-09-21).
 - [ ] **Data safety form** — paste from [`PLAY_STORE_LISTING.md`](./PLAY_STORE_LISTING.md)
       (email, task data, Sentry crash logs, AdMob Advertising ID / approximate location / ad
       interactions, purchase history). Not "no ad SDKs".
