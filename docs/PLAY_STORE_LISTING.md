@@ -48,7 +48,7 @@ TimeSense is about self-knowledge, not pressure.
 
 **Contact email:** imkumaraju@gmail.com
 
-**Privacy policy URL:** `https://imkumaraju.github.io/TimeSense/legal/privacy.html` (already live). **Redeploy `docs/legal/privacy.html` after the 2026-09-13 ads/UMP wording change** — the public page must match the in-app policy (`lib/legalContent.ts`) before Play review.
+**Privacy policy URL:** `https://imkumaraju.github.io/TimeSense/legal/privacy.html` (live; ads/UMP/Sentry wording deployed 2026-09-21).
 
 ## Play Console — Ads declaration
 
@@ -109,4 +109,4 @@ If Play's form still has a leftover "No ads / no ad SDKs" answer from the pre-Ad
 - [ ] Content rating questionnaire answers (straightforward — no violence/gambling/etc. content, standard "Everyone" category expected)
 - [ ] App content declarations (target audience age range — pick based on who TimeSense is actually for; **Ads = Yes**, see "Play Console — Ads declaration" above)
 - [ ] Fill Data safety from the table above (includes AdMob Advertising ID, approximate location, ad interactions)
-- [ ] Redeploy `docs/legal/privacy.html` to GitHub Pages so the live privacy URL matches the ads/UMP wording
+- [x] Redeploy `docs/legal/privacy.html` to GitHub Pages so the live privacy URL matches the ads/UMP wording (2026-09-21)
