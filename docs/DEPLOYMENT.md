@@ -307,11 +307,16 @@ Google Play only for this release. iOS/App Store/TestFlight explicitly out of sc
 - [ ] Play Console → **Create app**
   - Package name: `com.timesense.sys` (matches the `preview` EAS profile — do not create it under `com.timesense`)
   - App name: `TimeSense`
-- [ ] **Privacy policy URL** — required before any release; must be a public page describing what's collected (see below)
-- [ ] **Data safety form** — declare what's collected/shared: account email (Supabase Auth), task/routine/timer data (Supabase Postgres), no ad/analytics SDKs unless added later
+- [ ] **Privacy policy URL** — required before any release; public page at
+      `https://imkumaraju.github.io/TimeSense/legal/privacy.html`. Redeploy
+      `docs/legal/privacy.html` after the 2026-09-13 ads/UMP update so Play does not see the
+      old "no ads" wording.
+- [ ] **Data safety form** — paste from [`PLAY_STORE_LISTING.md`](./PLAY_STORE_LISTING.md)
+      (email, task data, Sentry crash logs, AdMob Advertising ID / approximate location / ad
+      interactions, purchase history). Not "no ad SDKs".
 - [ ] **Store listing** — icon, feature graphic (1024×500), phone screenshots (min 2), short description (≤80 chars), full description
 - [ ] **Content rating questionnaire**
-- [ ] **App content** declarations (ads: no: target audience, etc.)
+- [ ] **App content** declarations (ads: **Yes, Google AdMob**; target audience — not a kids' app; see PLAY_STORE_LISTING.md)
 - [ ] Upload the `.aab` from the `release` EAS build to an **Internal testing** track first
 - [ ] Test the internal build end-to-end on a real device, confirm it talks to sys Supabase
 - [ ] Promote Internal → Closed/Open testing (optional) → **Production** track when confident

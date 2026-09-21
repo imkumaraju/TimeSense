@@ -5,7 +5,13 @@ Claude) can pick this up cold — each item has enough context to act without re
 Cross-references the fuller docs (`DEPLOYMENT.md`, `PLAY_STORE_LISTING.md`, `RUNBOOK.md`,
 `BACKLOG.md`) rather than duplicating them; update *this* file's checkboxes as things move.
 
-**Last updated:** 2026-09-06 (item #12: pizza/plant/monk/cat/moon migrated to static images,
+**Last updated:** 2026-09-21 (item #16: TimeSense Plus shown as Coming soon while payments
+stay off — BillDesk needs a live listing to verify; store listing + privacy copy no longer
+imply Plus is purchasable.)
+Earlier: 2026-09-13 (item #17: UMP/GDPR consent implemented in `lib/ads.ts`; Play ads
+declaration + Data Safety fill-in locked in `docs/PLAY_STORE_LISTING.md`; privacy policy
+updated for AdMob. Item #6/#14 checkboxes pointed at those.)
+Earlier: 2026-09-06 (item #12: pizza/plant/monk/cat/moon migrated to static images,
 `expo-image` fix for an over-zoom bug; item #13: all streak/freeze UI removed, logic parked in
 `docs/BACKLOG.md` for redesign; item #14: subscription simplified to a single ads-only
 differentiator, AdMob interstitial added on Finish; item #15: daily style showcase screen
@@ -106,14 +112,17 @@ RevenueCat dashboard screenshots on 2026-08-22:
 ### 6. Play Console — App content declarations
 - Target audience age range — pick based on who TimeSense is actually for (not specifically a
   kids' app; likely broad adult/general audience given the ADHD-productivity framing)
-- Ads declaration: **Yes, ads** — no longer "No ads" as of item #14 (AdMob interstitial added
-  2026-09-05 for the standard tier's ads-on-finish). Update this before submission; also add
-  the Data Safety form's third-party ad SDK entry once real AdMob ad units are live (test-ID
-  builds may not need it — confirm Play's current policy line).
-- Data safety form: use the table already drafted in `docs/PLAY_STORE_LISTING.md` → "Data
-  safety form" section — cross-checked against actual code (`lib/purchases.ts`,
-  `lib/syncService.ts`, `app/_layout.tsx`'s Sentry usage). **Keep `docs/legal/privacy.html` in
-  sync if this ever changes** — it was already corrected once (see below).
+- **Ads declaration: Yes, ads — Google AdMob.** Exact answers to paste are in
+  `docs/PLAY_STORE_LISTING.md` → "Play Console — Ads declaration". Do this before submission;
+  a leftover "No ads" answer from the pre-AdMob draft will get the listing rejected.
+- **Data safety form:** paste from `docs/PLAY_STORE_LISTING.md` → "Data safety form" (updated
+  2026-09-13). Includes AdMob Advertising ID, approximate location (IP), ad interactions,
+  Sentry crash logs, and the unused-at-launch purchase SDK. Cross-checked against
+  `lib/ads.ts`, `lib/purchases.ts`, `lib/syncService.ts`, `app/_layout.tsx`. **Re-check Play's
+  category labels on the day you submit** — they rename; the facts don't.
+- **Privacy policy URL** must match the live page. In-app copy (`lib/legalContent.ts`) and
+  `docs/legal/privacy.html` were updated 2026-09-13 for ads/UMP — **redeploy GitHub Pages**
+  before review or Play will see the old "the app has no ads" text.
 
 ### 7. Play Console — Store listing page
 - Content fully drafted in `docs/PLAY_STORE_LISTING.md` (short description, full description —
@@ -322,9 +331,11 @@ RevenueCat dashboard screenshots on 2026-08-22:
         built at all per item #8's platform scope)
   - [ ] Real Google Play subscription products at $6.99/month, $59.99/year — blocked behind
         item #1/#2 (BillDesk merchant verification)
-  - [ ] Play Console ads declaration + Data Safety form update (see item #6)
-  - [ ] Decide on a UMP/consent flow for ad-related GDPR/regional requirements before shipping
-        real (non-test) ads to real users — not implemented in this pass
+  - [ ] Play Console ads declaration + Data Safety form — answers are ready in
+        `docs/PLAY_STORE_LISTING.md`; still need to be typed into Console (item #6)
+  - [x] UMP/consent flow for GDPR/EEA — implemented 2026-09-13 (item #17). Remaining is
+        creating the GDPR message in the AdMob dashboard so the in-app form actually has
+        copy to show.
   - [ ] Consider whether "ad on every single Finish tap" is too aggressive once tested on a
         real device — open question in the spec doc
 
@@ -351,20 +362,59 @@ RevenueCat dashboard screenshots on 2026-08-22:
   RevenueCat validation) still need BillDesk.
 - **Built and wired:** `lib/entitlements.ts` — new `PAYMENTS_ENABLED = false` flag, with a
   comment explaining what flipping it back to `true` requires (real linked RevenueCat
-  products). `app/(tabs)/settings.tsx`'s "Upgrade to Plus" upsell card is now hidden entirely
-  while the flag is off (the "Manage subscription" row still shows for anyone already on
-  Plus, e.g. via a RevenueCat sandbox/test purchase — unaffected by this flag). The `/paywall`
-  route itself, `lib/purchases.ts`, and `lib/entitlements.ts`'s `isPlus()` are all untouched —
-  this is purely a "don't offer the entry point" toggle, not a teardown of the purchase code.
+  products). Settings shows a non-tappable **TimeSense Plus · Coming soon** row while the
+  flag is off (the purchase CTA stays hidden so we don't offer a buy flow that can't
+  process a payment). The "Manage subscription" row still shows for anyone already on
+  Plus, e.g. via a RevenueCat sandbox/test purchase — unaffected by this flag. The `/paywall`
+  route becomes info-only (Coming soon + Got it) while the flag is off; `lib/purchases.ts`
+  and `lib/entitlements.ts`'s `isPlus()` are otherwise untouched.
+- **Why Coming soon instead of hiding Plus:** BillDesk needs a live app listing to finish
+  merchant verification. Announcing Plus as coming soon (without a purchase button) lets the
+  store listing ship while making it obvious payments aren't live yet.
 - **To re-enable payments later:** flip `PAYMENTS_ENABLED` to `true` in `lib/entitlements.ts`
   once items #2/#3 are done (real Play products created and linked in RevenueCat) — the
-  upsell card reappears automatically, no other code changes needed.
+  upsell card and real paywall reappear automatically, no other code changes needed.
 - **Not yet done:**
   - [ ] Actually proceed with the Play Store submission steps this unblocks (items #4–#7) —
         this item only prepared the code; submission itself hasn't been started
-  - [ ] Decide whether `docs/PLAY_STORE_LISTING.md`'s copy needs a pass to make sure nothing
-        implies Plus/paid features are available at launch, given the upsell entry point is
-        hidden
+  - [x] Store listing + privacy copy no longer imply Plus is purchasable at launch
+        (`docs/PLAY_STORE_LISTING.md`, `lib/legalContent.ts`, `docs/legal/privacy.html`)
+
+### 17. Ads legal — UMP consent + Play declarations
+- **Why:** Play will not accept a "no ads" declaration (or a privacy policy that still says
+  the app has no ads) now that AdMob is wired. EEA/UK also require a Google UMP consent form
+  before the ads SDK requests an ad — even for non-personalized inventory.
+- **Decision (2026-09-13):** use Google's UMP via `AdsConsent` on the already-installed
+  `react-native-google-mobile-ads` package (no extra CMP). Always request
+  `requestNonPersonalizedAdsOnly: true` as a second, conservative layer. Show the consent
+  form on **cold start**, never on Finish (Finish must stay one tap; a legal form there also
+  looks like an accidental-click trap). If UMP has not allowed ads, Finish still saves —
+  the interstitial is skipped. Settings → **Ad privacy** appears only when UMP says privacy
+  options are required (EEA/UK), and re-opens Google's form.
+- **Built and wired:** `lib/ads.ts` (`gatherAdsConsent`, `getAdsConsentSnapshot`,
+  `showAdsPrivacyOptions`, `interstitialIsDue`); `app/_layout.tsx` gathers consent on
+  launch; `app/(tabs)/settings.tsx` shows the Ad privacy row when required;
+  `app.config.js` sets `delayAppMeasurementInit: true` so measurement waits for
+  `MobileAds.initialize()` after consent. Unit tests in `lib/__tests__/ads.test.ts`.
+- **Docs:** `docs/concepts/feature-subscription-ads.md` (UMP section);
+  `docs/PLAY_STORE_LISTING.md` (paste-ready Ads + Data Safety answers);
+  `lib/legalContent.ts` + `docs/legal/privacy.html` (ads, UMP, crash reporting; guest mode
+  no longer claims zero third-party traffic).
+- **This is a native-config change** (`delayAppMeasurementInit`) — same fresh EAS build as
+  items #12/#13/#14.
+- **Not yet done (dashboard / Play Console — you):**
+  - [ ] AdMob → **Privacy & messaging** → create a **GDPR** message for the Android app.
+        Without this, `gatherConsent()` succeeds but the form has nothing to show, and EEA
+        users may get `canRequestAds: false` (no ads, Finish still works).
+  - [ ] Optional: add a **US state regulations** message if you will distribute in those
+        states; skip if you are launching India/global without CCPA messaging for now.
+  - [ ] Type the Ads + Data Safety answers from `docs/PLAY_STORE_LISTING.md` into Play
+        Console (item #6) — this item only prepared the copy
+  - [ ] Redeploy `docs/legal/privacy.html` to GitHub Pages so the live privacy URL matches
+  - [ ] On-device: confirm the UMP form appears for an EEA-debug device
+        (`EXPO_PUBLIC_ADMOB_DEBUG_EEA=1` + `EXPO_PUBLIC_ADMOB_TEST_DEVICE_ID` from logcat;
+        see `.env.example`), Ad privacy shows in Settings afterwards, declining still lets
+        Finish save, and a non-EEA device never sees the form
 
 ---
 
